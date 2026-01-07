@@ -1,0 +1,883 @@
+---
+title: "Curve-based + traditional analysis of Bipolaris epidemics"
+subtitle: "Functional (beta-GAM/HGAM) smoothing, functional distances, and AUDPC mixed-model comparison"
+author: "Emerson M. Del Ponte"
+theme: flatly
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    code-fold: false
+    code-tools: true
+execute:
+  echo: true
+  message: false
+  warning: false
+---
+
+## Overview
+
+This document implements two complementary analyses for Bipolaris leaf spot epidemics assessed in maize hybrids:
+
+**A. Functional (curve-based) analysis**
+
+1.  **Beta-GAM (HGAM)** to smooth severity trajectories and adjust for environment.
+2.  **Environment-adjusted hybrid mean curves**.
+3.  **Functional distance** among hybrids and **hierarchical clustering** (dendrogram + curve panel).
+4.  *“Killer pair” figure:* two curves that are **scalar-equivalent** (AUDPC + final severity) but **trajectory-distinct**, with the difference function $\Delta(t)$ and its contribution to the $L^2$ distance.
+
+**B. Traditional (scalar) analysis**
+
+1.  **AUDPC** per hybrid within environment (as available in the dataset design).
+2.  Mixed-model ANOVA and **Tukey** letter groups (via `emmeans::cld()`).
+3.  Merge **Tukey groups** with **functional clusters** for side-by-side comparison.
+
+------------------------------------------------------------------------
+
+## Data and design
+
+-   **Input file:** `maize_bipolaris.csv`
+-   **Response:** Bipolaris severity (%) converted to proportion
+-   **Time scale:** DAE (days after emergence)
+-   **Design columns:** `Ambiente` (environment), `Hibrido` (hybrid), `Parcela` (plot/block)
+
+------------------------------------------------------------------------
+
+## Methods (equations)
+
+### Response scale and beta regression constraints
+
+The raw severity in percent is converted to a proportion:
+
+$$
+y = \frac{\text{severity (\%)}}{100}.
+$$
+
+Beta regression requires $0 < y < 1$, so we apply a small boundary adjustment:
+
+$$
+y^* = \min\left(\max(y, \varepsilon), 1-\varepsilon\right).
+$$
+
+### AUDPC
+
+AUDPC is approximated using the trapezoidal rule for a curve $y(t)$ observed at times $t_1 < \dots < t_m$:
+
+$$
+\mathrm{AUDPC} \approx \sum_{i=1}^{m-1} \frac{(y_i + y_{i+1})}{2}\,(t_{i+1}-t_i).
+$$
+
+### $T_{50}$
+
+$T_{50}$ is computed as the time when the curve reaches half its observed maximum:
+
+$$
+T_{50}=\min\{t:\; y(t)\ge 0.5\,y_{\max}\},
+$$
+
+estimated by linear interpolation between adjacent observation times.
+
+### Logistic rate (optional scalar)
+
+We fit a logistic curve to each epidemic trajectory:
+
+$$
+y(t)=\frac{K}{1 + \exp\{-r(t-t_0)\}},
+$$
+
+and report a duration-normalized rate:
+
+$$
+r_{\mathrm{norm}} = r\,(t_{\max}-t_{\min}).
+$$
+
+### Functional distance between curves
+
+For two smooth mean curves $\mu_a(t)$ and $\mu_b(t)$, the $L^2$ distance is:
+
+$$
+d_F(a,b) = \left(\int \big[\mu_a(t)-\mu_b(t)\big]^2\,dt\right)^{1/2}.
+$$
+
+On an evenly spaced grid with step $\Delta t$, we approximate:
+
+$$
+d_F(a,b)\approx \left(\sum_{j} [\mu_a(t_j)-\mu_b(t_j)]^2\,\Delta t\right)^{1/2}.
+$$
+
+------------------------------------------------------------------------
+
+## Setup
+
+### Packages
+
+```{r}
+#| label: setup-packages
+#| include: true
+
+pkgs <- c(
+  "readr","dplyr","tidyr","tibble","purrr",
+  "ggplot2","mgcv","pracma","pheatmap",
+  "lme4","lmerTest","emmeans","multcompView",
+  "cowplot","ggrepel","ggdendro","patchwork",
+  "DHARMa","stringr","glue"
+)
+
+to_install <- pkgs[!pkgs %in% rownames(installed.packages())]
+if(length(to_install) > 0) install.packages(to_install, dependencies = TRUE)
+
+library(readr)
+library(dplyr)
+library(tidyr)
+library(tibble)
+library(purrr)
+library(ggplot2)
+library(mgcv)
+library(pracma)
+library(pheatmap)
+library(lme4)
+library(lmerTest)
+library(emmeans)
+library(multcompView)
+library(cowplot)
+library(ggrepel)
+library(ggdendro)
+library(patchwork)
+library(DHARMa)
+library(stringr)
+library(glue)
+
+theme_set(theme_classic(base_size = 14))
+```
+
+### User settings
+
+```{r}
+#| label: setup-settings
+
+file_path  <- "maize_bipolaris.csv"
+
+# Data window (as in your script)
+dae_min <- 20
+dae_max <- 116
+
+# Minimum number of assessments per curve_id to retain
+# NOTE: your header comment said 8, but the code used 5. Keep as a parameter here.
+min_assess <- 5
+
+# Beta boundary adjustment
+eps <- 1e-4
+
+# Functional clustering
+k_clusters <- 4
+
+# Time grid for functional distances / plots
+grid_n <- 140
+
+# Reference environment used for "environment-adjusted" mean curves
+# (your original code used the first level; keep that default)
+```
+
+------------------------------------------------------------------------
+
+## Read and prepare data
+
+```{r}
+#| label: data-read
+
+dat0 <- read_csv(file_path, show_col_types = FALSE)
+
+dat0 <- dat0 |>
+  filter(DAE < dae_max, DAE > dae_min)
+
+# Expected columns: Ambiente, Hibrido, Parcela, DAE, Bipolaris
+dat <- dat0 %>%
+  transmute(
+    Ambiente  = factor(Ambiente),
+    Hibrido   = factor(Hibrido),
+  
+    DAE       = as.numeric(DAE),
+    bipolaris = as.numeric(Bipolaris) / 100  # % -> proportion
+  ) %>%
+  filter(!is.na(Ambiente), !is.na(Hibrido), 
+         !is.na(DAE), !is.na(bipolaris)) %>%
+  mutate(
+    curve_id = interaction(Ambiente, Hibrido), drop = TRUE, sep = "|") %>%
+  arrange(curve_id, DAE)
+
+# Retain curves with at least min_assess time points
+curve_n <- dat %>% count(curve_id, name = "n_assess")
+dat <- dat %>%
+  left_join(curve_n, by = "curve_id") %>%
+  filter(n_assess >= min_assess) %>%
+  select(-n_assess)
+
+# Beta regression requires 0 < y < 1
+dat <- dat %>%
+  mutate(y = pmin(pmax(bipolaris, eps), 1 - eps))
+
+message("Rows: ", nrow(dat),
+        " | curves: ", n_distinct(dat$curve_id),
+        " | hybrids: ", n_distinct(dat$Hibrido),
+        " | envs: ", n_distinct(dat$Ambiente))
+```
+
+### Optional: join hybrid resistance class
+
+```{r}
+#| label: data-resistance
+
+bipolaris_df <- data.frame(
+  Hibrido = c(
+    "AG 8701 PRO4","AG 8707 PRO4","AG 9021 PRO3","AS 1757 PRO4","AS 1868 PRO4",
+    "AS 1955 PRO4","B 2801 PWU","CRWX03","DKB 230 PRO3","DKB 242 PRO4",
+    "MG 616 PWU","P 3016 VYHR","T 1503 PWU"
+  ),
+  resistance = c("MR","MR","MR","MR","R","MR","MR","R","MR","MR","MR","R","MR"),
+  stringsAsFactors = FALSE
+)
+
+dat <- dat %>%
+  left_join(bipolaris_df, by = "Hibrido") %>%
+  transmute(
+    y          = as.numeric(y),
+    DAE        = as.numeric(DAE),
+    Ambiente   = factor(Ambiente),
+    Hibrido    = factor(Hibrido),
+    curve_id   = factor(curve_id),
+    resistance = factor(resistance)
+  ) %>%
+  as.data.frame()
+
+str(dat)
+dat |> 
+  group_by(Ambiente) |> 
+  count(DAE)
+
+
+```
+
+------------------------------------------------------------------------
+
+## Helper functions (scalars)
+
+```{r}
+#| label: helpers-scalars
+
+# T50: time when y reaches 0.5*ymax (linear interpolation)
+t50_interp <- function(time, y){
+  o <- order(time)
+  time <- time[o]; y <- y[o]
+  ymax <- max(y, na.rm = TRUE)
+  thr  <- 0.5 * ymax
+  if(all(y < thr, na.rm = TRUE)) return(NA_real_)
+  k <- which(y >= thr)[1]
+  if(k == 1) return(time[1])
+  t1 <- time[k-1]; t2 <- time[k]
+  y1 <- y[k-1];    y2 <- y[k]
+  if(isTRUE(all.equal(y2, y1))) return(t2)
+  t1 + (thr - y1) * (t2 - t1) / (y2 - y1)
+}
+
+# Logistic fit: y(t)=K/(1+exp(-r(t-t0))) and r_norm = r*(tmax-tmin)
+logistic_fit_rate <- function(time, y){
+  o <- order(time)
+  time <- time[o]; y <- y[o]
+  y <- pmin(pmax(y, 1e-4), 1 - 1e-4)
+
+  K0  <- max(y)
+  d   <- diff(y)
+  t00 <- if(length(d) > 0 && any(is.finite(d))) time[which.max(d) + 1] else median(time)
+  if(is.na(t00)) t00 <- median(time)
+  r0  <- 0.1
+
+  f <- tryCatch(
+    nls(
+      y ~ K / (1 + exp(-r * (time - t0))),
+      start = list(K = K0, r = r0, t0 = t00),
+      control = nls.control(maxiter = 200, warnOnly = TRUE)
+    ),
+    error = function(e) NULL
+  )
+
+  if(is.null(f)) return(tibble(r = NA_real_, K = NA_real_, t0 = NA_real_, r_norm = NA_real_))
+
+  co  <- coef(f)
+  r   <- unname(co["r"])
+  K   <- unname(co["K"])
+  t0  <- unname(co["t0"])
+  dur <- max(time) - min(time)
+  tibble(r = r, K = K, t0 = t0, r_norm = r * dur)
+}
+```
+
+------------------------------------------------------------------------
+
+## Per-curve scalar metrics (AUDPC, final, T50, r_norm)
+
+```{r}
+#| label: scalars-per-curve
+
+curve_stats <- dat %>%
+  group_by(curve_id, Ambiente, Hibrido) %>%
+  summarise(
+    AUDPC     = pracma::trapz(DAE, y),
+    final_sev = y[which.max(DAE)],
+    T50       = t50_interp(DAE, y),
+    .groups   = "drop"
+  )
+
+rate_df <- map_dfr(unique(curve_stats$curve_id), function(cid){
+  df <- dat %>% filter(curve_id == cid)
+  logistic_fit_rate(df$DAE, df$y) %>% mutate(curve_id = as.character(cid))
+})
+
+curve_stats <- curve_stats %>%
+  mutate(curve_id = as.character(curve_id)) %>%
+  left_join(rate_df, by = "curve_id") %>%
+  filter(is.finite(T50), is.finite(r_norm))
+
+message("Curves with all scalar metrics: ", nrow(curve_stats))
+```
+
+------------------------------------------------------------------------
+
+## Hierarchical beta-GAM (HGAM) for smoothing and adjustment
+
+Model specification (as in your script):
+
+-   $s(\mathrm{DAE})$ global mean epidemic shape\
+-   $s(\mathrm{DAE}, \mathrm{Ambiente}, \mathrm{bs}=\mathrm{fs})$ environment-specific deviation (random smooth)\
+-   $s(\mathrm{DAE}, \mathrm{Hibrido}, \mathrm{bs}=\mathrm{fs})$ hybrid-specific deviation (random smooth)\
+-   $s(\mathrm{curve\_id}, \mathrm{bs}=\mathrm{re})$ curve-level random intercept
+
+```{r}
+#| label: gam-fit
+
+set.seed(1)
+
+m_gam <- mgcv::bam(
+  y ~ s(DAE, k = 10) +
+    s(DAE, Ambiente, bs = "fs", k = 4, m = 1) +
+    s(DAE, Hibrido,  bs = "fs", k = 4, m = 1) +
+    s(curve_id, bs = "re"),
+  family   = mgcv::betar(link = "logit"),
+  data     = dat,
+  method   = "fREML",
+  discrete = TRUE,
+  gamma    = 1.4,
+  select   = TRUE
+)
+
+mgcv::gam.check(m_gam)
+AIC(m_gam)
+summary(m_gam)
+```
+
+### Diagnostics (observed vs fitted and residuals)
+
+```{r}
+#| label: gam-diagnostics
+
+dat$mu_hat <- predict(m_gam, type = "response")
+
+ggplot(dat, aes(mu_hat, y)) +
+  geom_point(alpha = 0.3) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  labs(x = "Fitted", y = "Observed")
+
+res <- residuals(m_gam, type = "pearson")
+plot(dat$DAE, res)
+abline(h = 0, lty = 2)
+```
+
+------------------------------------------------------------------------
+
+## Environment-adjusted hybrid mean curves
+
+We obtain hybrid mean curves on a regular grid **excluding**:
+
+-   the environment random smooth term `s(DAE,Ambiente)`
+-   the curve random intercept `s(curve_id)`
+
+so each hybrid is represented at a chosen reference environment level.
+
+```{r}
+#| label: pred-hybrid-curves
+
+t_grid <- seq(min(dat$DAE), max(dat$DAE), length.out = grid_n)
+env_ref <- levels(dat$Ambiente)[1]
+cultivars <- levels(dat$Hibrido)
+
+pred_cult <- map_dfr(cultivars, function(cv){
+  newd <- tibble(
+    DAE      = t_grid,
+    Ambiente = factor(env_ref, levels = levels(dat$Ambiente)),
+    Hibrido  = factor(cv, levels = levels(dat$Hibrido)),
+    curve_id = dat$curve_id[1]  # dummy; excluded below
+  )
+
+  mu <- predict(
+    m_gam, newdata = newd, type = "response",
+    exclude = c("s(DAE,Ambiente)", "s(curve_id)")
+  )
+  tibble(Hibrido = cv, DAE = t_grid, mu = as.numeric(mu))
+})
+
+cult_score <- pred_cult %>%
+  group_by(Hibrido) %>%
+  summarise(mean_mu = mean(mu), .groups = "drop") %>%
+  arrange(mean_mu)
+
+cult_score
+```
+
+------------------------------------------------------------------------
+
+## Functional distance among hybrids + clustering
+
+### Utility: shorten hybrid labels
+
+```{r}
+#| label: utils-short-label
+
+shorten_hybrid <- function(x) {
+  x <- gsub(" PRO[0-9]+| PWU| VYHR", "", x)
+  x <- gsub(" ", "", x)
+  x
+}
+```
+
+### Build distance matrix and cluster
+
+```{r}
+#| label: functional-distance
+
+# Wide matrix: rows = time, cols = hybrid
+mat <- pred_cult %>%
+  select(DAE, Hibrido, mu) %>%
+  pivot_wider(names_from = Hibrido, values_from = mu) %>%
+  arrange(DAE)
+
+dt_grid <- mean(diff(mat$DAE))
+
+matX <- mat %>%
+  select(-DAE) %>%
+  as.matrix()
+
+# Functional L2 distance (grid approximation)
+D_cult <- as.matrix(dist(t(matX), method = "euclidean")) * sqrt(dt_grid)
+
+hc <- hclust(as.dist(D_cult), method = "ward.D2")
+cl_raw <- cutree(hc, k = k_clusters)
+
+# Order clusters by mean severity (from cult_score)
+cluster_rank_map <- tibble(Hibrido = names(cl_raw),
+                           cluster_raw = as.integer(cl_raw)) %>%
+  left_join(cult_score %>% select(Hibrido, mean_mu), by = "Hibrido") %>%
+  group_by(cluster_raw) %>%
+  summarise(cluster_mean = mean(mean_mu, na.rm = TRUE), .groups = "drop") %>%
+  arrange(cluster_mean) %>%
+  mutate(cluster = row_number()) %>%
+  select(cluster_raw, cluster)
+
+cluster_table2 <- tibble(Hibrido = names(cl_raw),
+                         cluster_raw = as.integer(cl_raw)) %>%
+  left_join(cluster_rank_map, by = "cluster_raw") %>%
+  left_join(cult_score %>% select(Hibrido, mean_mu), by = "Hibrido") %>%
+  mutate(
+    phenotype = factor(cluster,
+                       levels = 1:k_clusters,
+                       labels = paste0("P", 1:k_clusters))
+  )
+
+cluster_table2
+```
+
+### Figure: mean curves by phenotype + dendrogram
+
+```{r}
+#| label: figure-functional-panels
+
+cols <- c("#D55E00", "#0072B2", "#009E73", "#CC79A7")[1:k_clusters]
+phen_cols <- setNames(cols, levels(cluster_table2$phenotype))
+
+pred_cult2 <- pred_cult %>%
+  left_join(cluster_table2 %>% select(Hibrido, phenotype), by = "Hibrido") %>%
+  mutate(hybrid_short = shorten_hybrid(Hibrido))
+
+label_df <- pred_cult2 %>%
+  group_by(Hibrido) %>%
+  filter(DAE == max(DAE, na.rm = TRUE)) %>%
+  ungroup()
+
+p_hibridos <- ggplot(pred_cult2,
+                     aes(x = DAE, y = mu, group = Hibrido, color = phenotype)) +
+  geom_line(linewidth = 1.1, alpha = 0.95) +
+  ggrepel::geom_text_repel(
+    data = label_df,
+    aes(label = hybrid_short),
+    hjust = 0, direction = "y",
+    nudge_x = 2,
+    size = 2.8,
+    show.legend = FALSE,
+    segment.size = 0.2,
+    segment.alpha = 0.6
+  ) +
+  expand_limits(x = max(pred_cult2$DAE, na.rm = TRUE) + 8) +
+  scale_color_manual(values = phen_cols, drop = FALSE) +
+  labs(x = "Days after emergence (DAE)",
+       y = "Environment-adjusted mean severity",
+       color = "Phenotype") +
+  theme(legend.position = "bottom")
+
+ddata <- ggdendro::dendro_data(as.dendrogram(hc), type = "rectangle")
+
+lab_map <- cluster_table2 %>%
+  mutate(label = Hibrido,
+         label_short = shorten_hybrid(Hibrido),
+         lab_col = phen_cols[as.character(phenotype)]) %>%
+  select(label, label_short, lab_col)
+
+lab_df <- ddata$labels %>%
+  left_join(lab_map, by = c("label" = "label")) %>%
+  mutate(label_short = ifelse(is.na(label_short), shorten_hybrid(label), label_short))
+
+p_dend <- ggplot() +
+  geom_segment(data = ddata$segments,
+               aes(x = x, y = y, xend = xend, yend = yend),
+               linewidth = 0.45) +
+  geom_text(data = lab_df,
+            aes(x = x, y = y - 0.02 * max(ddata$segments$y),
+                label = label_short, color = I(lab_col)),
+            angle = 90, hjust = 1, size = 3) +
+  labs(x = NULL, y = "Functional distance") +
+  theme_classic(base_size = 14) +
+  theme(axis.line.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x  = element_blank()) +
+  coord_cartesian(clip = "off") +
+  theme(plot.margin = margin(t = 5.5, r = 5.5, b = 18, l = 5.5))
+
+h_cut <- hc$height[length(hc$height) - (k_clusters - 1)]
+p_dend <- p_dend +
+  geom_hline(yintercept = h_cut, linetype = "dashed",
+             linewidth = 0.5, color = "grey30")
+
+fig_final <- (p_hibridos | p_dend) + plot_annotation(tag_levels = "A")
+fig_final
+
+# ggsave("Figure2_functional_phenotypes.png", fig_final, width = 12, height = 5.5, dpi = 300)
+```
+
+------------------------------------------------------------------------
+
+## Scalar-equivalent but trajectory-distinct curves
+
+We select two **individual curves** (by `curve_id`) that are close in scalar space (AUDPC + final severity) but have large functional distance on a common grid.
+
+### Select candidate pairs (scalar-nearest) and maximize functional distance
+
+```{r}
+#| label: killer-select-pair
+
+dfS <- curve_stats %>%
+  transmute(
+    curve_id  = as.character(curve_id),
+    AUDPC     = as.numeric(AUDPC),
+    final_sev = as.numeric(final_sev)
+  ) %>%
+  filter(is.finite(AUDPC), is.finite(final_sev)) %>%
+  distinct(curve_id, .keep_all = TRUE) %>%
+  mutate(
+    AUDPC_z = as.numeric(scale(AUDPC)),
+    final_z = as.numeric(scale(final_sev))
+  )
+
+pairs_scalar <- crossing(
+  dfS %>% rename_with(~ paste0(.x, ".x"), -curve_id) %>% rename(curve_id.x = curve_id),
+  dfS %>% rename_with(~ paste0(.x, ".y"), -curve_id) %>% rename(curve_id.y = curve_id)
+) %>%
+  filter(curve_id.x < curve_id.y) %>%
+  mutate(
+    scalar_dist = sqrt((AUDPC_z.x - AUDPC_z.y)^2 +
+                         (final_z.x - final_z.y)^2)
+  ) %>%
+  arrange(scalar_dist)
+
+thr  <- quantile(pairs_scalar$scalar_dist, 0.03, na.rm = TRUE)
+cand <- pairs_scalar %>% filter(scalar_dist <= thr)
+
+interp_curve <- function(id){
+  df <- dat %>% filter(as.character(curve_id) == id) %>% arrange(DAE)
+  approx(df$DAE, df$y, xout = t_grid, rule = 2)$y
+}
+
+dt <- mean(diff(t_grid))
+
+cand2 <- cand %>%
+  rowwise() %>%
+  mutate(
+    func_dist = {
+      y1 <- interp_curve(curve_id.x)
+      y2 <- interp_curve(curve_id.y)
+      sqrt(sum((y1 - y2)^2) * dt)
+    }
+  ) %>%
+  ungroup()
+
+best <- cand2 %>%
+  arrange(desc(func_dist), scalar_dist) %>%
+  slice(1)
+
+id1 <- best$curve_id.x
+id2 <- best$curve_id.y
+
+best
+```
+
+### Plot the two raw curves
+
+```{r}
+#| label: killer-plot-raw
+
+plot_pair <- dat %>%
+  filter(as.character(curve_id) %in% c(id1, id2)) %>%
+  mutate(curve = if_else(as.character(curve_id) == id1, "A", "B"))
+
+s1 <- dfS %>% filter(curve_id == id1)
+s2 <- dfS %>% filter(curve_id == id2)
+
+ann <- glue(
+  "AUDPC  A={round(s1$AUDPC,2)}  B={round(s2$AUDPC,2)}\n",
+  "Final   A={round(s1$final_sev,2)}  B={round(s2$final_sev,2)}\n",
+  "d_S={signif(best$scalar_dist,3)}   d_F={signif(best$func_dist,3)}"
+)
+
+y_top <- max(plot_pair$y, na.rm = TRUE) * 1.15
+
+p_main <- ggplot(plot_pair, aes(DAE, y, color = curve)) +
+  geom_point(alpha = 0.8, size = 2) +
+  geom_line(linewidth = 1) +
+  scale_color_grey() +
+  annotate("label",
+           x = min(plot_pair$DAE) + 2,
+           y = y_top - 0.02,
+           label = ann,
+           hjust = 0,
+           size = 4,
+           fill = "white") +
+  labs(
+    x = "Days after emergence (DAE)",
+    y = "Disease severity (proportion)",
+    color = "Curve"
+  ) +
+  coord_cartesian(ylim = c(0, y_top))
+
+p_main
+```
+
+### Difference function $\Delta(t)$ and its integral contribution
+
+```{r}
+#| label: killer-delta
+
+yA <- interp_curve(id1)
+yB <- interp_curve(id2)
+
+df_diff <- tibble(
+  DAE  = t_grid,
+  diff = yA - yB,
+  sq   = (yA - yB)^2
+)
+
+dt <- mean(diff(t_grid))
+L2_sq <- sum(df_diff$sq) * dt
+L2    <- sqrt(L2_sq)
+
+p_diff <- ggplot(df_diff, aes(DAE, diff)) +
+  geom_hline(yintercept = 0, linewidth = 0.4) +
+  geom_line(linewidth = 1) +
+  labs(
+    x = "Days after emergence (DAE)",
+    y = expression(Delta(t) == y[A](t) - y[B](t)),
+    subtitle = paste0("L2 distance = ", signif(L2, 3),
+                      "  ( ∫Δ(t)^2 dt = ", signif(L2_sq, 3), " )")
+  )
+
+p_sq <- ggplot(df_diff, aes(DAE, sq)) +
+  geom_line(linewidth = 1) +
+  labs(
+    x = "Days after emergence (DAE)",
+    y = expression(Delta(t)^2),
+    subtitle = "Integral of Δ(t)^2 over time drives the L2 distance"
+  )
+
+p_diff
+p_sq
+```
+
+------------------------------------------------------------------------
+
+## Traditional AUDPC analysis (mixed model + Tukey)
+
+**Important design note.** Your script uses one AUDPC per `Hibrido × Ambiente`:
+
+``` r
+audpc_df <- dat %>% group_by(Ambiente, Hibrido) %>% summarise(AUDPC = ..., .groups="drop")
+```
+
+This is appropriate if (a) `Parcela` is not a true replication factor, or (b) you intentionally aggregate within environment. If you do have plot-level replication and want plot-level inference, compute AUDPC by `Ambiente × Hibrido × Parcela` and fit a corresponding mixed model.
+
+### Compute AUDPC and fit model
+
+```{r}
+#| label: audpc-model
+
+audpc_df <- dat %>%
+  group_by(Ambiente, Hibrido) %>%
+  summarise(AUDPC = pracma::trapz(DAE, y), .groups = "drop")
+
+audpc_df2 <- audpc_df %>%
+  mutate(
+    Ambiente = factor(Ambiente),
+    Hibrido  = factor(Hibrido),
+    AUDPC    = as.numeric(AUDPC)
+  ) %>%
+  filter(is.finite(AUDPC))
+
+# Mixed model: random intercept for Ambiente (as in your earlier block)
+m_audpc <- lmer(AUDPC ~ Hibrido + (1 | Ambiente), data = audpc_df2)
+anova(m_audpc)
+```
+
+### Model checks (DHARMa)
+
+```{r}
+#| label: audpc-diagnostics
+
+set.seed(1)
+res_a <- simulateResiduals(m_audpc, n = 2000)
+
+plot(res_a)
+testUniformity(res_a)
+testDispersion(res_a)
+testOutliers(res_a)
+```
+
+### Hybrid means + Tukey letters
+
+```{r}
+#| label: audpc-tukey
+
+emm_h <- emmeans(m_audpc, ~ Hibrido)
+
+cld_res <- multcomp::cld(
+  emm_h,
+  Letters = letters,
+  adjust  = "tukey"
+)
+
+audpc_groups <- as.data.frame(cld_res) %>%
+  transmute(
+    Hibrido,
+    emmean,
+    SE,
+    df,
+    lower.CL,
+    upper.CL,
+    .group = stringr::str_squish(.group)
+  ) %>%
+  arrange(emmean)
+
+audpc_groups
+```
+
+### Merge Tukey groups with functional clusters
+
+```{r}
+#| label: audpc-merge-functional
+
+final_compare <- audpc_groups %>%
+  left_join(
+    cluster_table2 %>% select(Hibrido, cluster, phenotype),
+    by = "Hibrido"
+  ) %>%
+  arrange(emmean)
+
+final_compare
+```
+
+### Plot: AUDPC means, CI, Tukey letters (colored by functional phenotype)
+
+```{r}
+#| label: audpc-plot
+
+plot_df <- final_compare %>%
+  mutate(
+    hybrid_short = shorten_hybrid(Hibrido),
+    cluster = factor(cluster)
+  )
+
+cols <- c("#D55E00", "#0072B2", "#009E73", "#CC79A7")[1:k_clusters]
+
+ggplot(plot_df,
+       aes(y = reorder(hybrid_short, emmean),
+           x = emmean,
+           color = cluster)) +
+  geom_point(size = 3) +
+  scale_color_manual(values = cols) +
+  geom_errorbarh(aes(xmin = lower.CL, xmax = upper.CL), height = 0.12) +
+  geom_text(aes(label = .group), hjust = 0, vjust = -1, size = 4, color = "black") +
+  labs(
+    x = "AUDPC",
+    y = "Hybrid",
+    color = "Functional phenotype",
+    title = NULL
+  ) +
+  theme(legend.position = "bottom") +
+  coord_cartesian(xlim = c(min(plot_df$lower.CL), max(plot_df$upper.CL) * 1.10))
+```
+
+------------------------------------------------------------------------
+
+## Optional: run `compare_curves()` from `{r4pde}`
+
+This section reproduces your final call, assuming `{r4pde}` is installed and your `dat` object matches the required schema.
+
+```{r}
+#| label: r4pde-compare-curves
+#| eval: false
+
+#pak::pkg_install("emdelponte/r4pde")
+library(r4pde)
+
+m1 <- compare_curves(
+  data = dat,
+  time = "DAE",
+  response = "y",
+  treatment = "Hibrido",
+  environment = "Ambiente",
+  test_factor = "resistance",
+  perm_unit = "Hibrido",
+  perm_strata = "Ambiente",
+  test_mode = "global",
+  bootstrap = TRUE,
+  boot_B = 399
+)
+
+m1
+plot(m1)
+plot_curves(m1)
+plot_dendrogram(m1)
+```
+
+------------------------------------------------------------------------
+
+## Session info
+
+```{r}
+#| label: session-info
+sessionInfo()
+```
