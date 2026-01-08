@@ -318,7 +318,7 @@ d_F(a,b)\approx \left(\sum_{j} [\mu_a(t_j)-\mu_b(t_j)]^2\,\Delta t\right)^{1/2}.
 <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>dae_max <span class="ot">&lt;-</span> <span class="dv">116</span></span>
 <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Minimum number of assessments per curve_id to retain</span></span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="co"># </span><span class="al">NOTE</span><span class="co">: your header comment said 8, but the code used 5. Keep as a parameter here.</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>min_assess <span class="ot">&lt;-</span> <span class="dv">5</span></span>
 <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Beta boundary adjustment</span></span>
@@ -330,8 +330,7 @@ d_F(a,b)\approx \left(\sum_{j} [\mu_a(t_j)-\mu_b(t_j)]^2\,\Delta t\right)^{1/2}.
 <span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Time grid for functional distances / plots</span></span>
 <span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>grid_n <span class="ot">&lt;-</span> <span class="dv">140</span></span>
 <span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a><span class="co"># Reference environment used for "environment-adjusted" mean curves</span></span>
-<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a><span class="co"># (your original code used the first level; keep that default)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a><span class="co"># Reference environment used for "environment-adjusted" mean curves</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <hr>
 </section>
@@ -1030,7 +1029,6 @@ fREML = -865.48  Scale est. = 1         n = 885</code></pre>
 </section>
 <section id="traditional-audpc-analysis-mixed-model-tukey" class="level2" data-number="12">
 <h2 data-number="12" class="anchored" data-anchor-id="traditional-audpc-analysis-mixed-model-tukey"><span class="header-section-number">12</span> Traditional AUDPC analysis (mixed model + Tukey)</h2>
-<p><strong>Important design note.</strong> Your script uses one AUDPC per <code>Hibrido × Ambiente</code>:</p>
 <div class="sourceCode" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>audpc_df <span class="ot">&lt;-</span> dat <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(Ambiente, Hibrido) <span class="sc">%&gt;%</span> <span class="fu">summarise</span>(<span class="at">AUDPC =</span> ..., <span class="at">.groups=</span><span class="st">"drop"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>This is appropriate if (a) <code>Parcela</code> is not a true replication factor, or (b) you intentionally aggregate within environment. If you do have plot-level replication and want plot-level inference, compute AUDPC by <code>Ambiente × Hibrido × Parcela</code> and fit a corresponding mixed model.</p>
 <section id="compute-audpc-and-fit-model" class="level3" data-number="12.1">
@@ -1984,7 +1982,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb48-169"><a href="#cb48-169" aria-hidden="true" tabindex="-1"></a>dae_max <span class="ot">&lt;-</span> <span class="dv">116</span></span>
 <span id="cb48-170"><a href="#cb48-170" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb48-171"><a href="#cb48-171" aria-hidden="true" tabindex="-1"></a><span class="co"># Minimum number of assessments per curve_id to retain</span></span>
-<span id="cb48-172"><a href="#cb48-172" aria-hidden="true" tabindex="-1"></a><span class="co"># </span><span class="al">NOTE</span><span class="co">: your header comment said 8, but the code used 5. Keep as a parameter here.</span></span>
+<span id="cb48-172"><a href="#cb48-172" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb48-173"><a href="#cb48-173" aria-hidden="true" tabindex="-1"></a>min_assess <span class="ot">&lt;-</span> <span class="dv">5</span></span>
 <span id="cb48-174"><a href="#cb48-174" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb48-175"><a href="#cb48-175" aria-hidden="true" tabindex="-1"></a><span class="co"># Beta boundary adjustment</span></span>
@@ -1997,7 +1995,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb48-182"><a href="#cb48-182" aria-hidden="true" tabindex="-1"></a>grid_n <span class="ot">&lt;-</span> <span class="dv">140</span></span>
 <span id="cb48-183"><a href="#cb48-183" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb48-184"><a href="#cb48-184" aria-hidden="true" tabindex="-1"></a><span class="co"># Reference environment used for "environment-adjusted" mean curves</span></span>
-<span id="cb48-185"><a href="#cb48-185" aria-hidden="true" tabindex="-1"></a><span class="co"># (your original code used the first level; keep that default)</span></span>
+<span id="cb48-185"><a href="#cb48-185" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb48-186"><a href="#cb48-186" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb48-187"><a href="#cb48-187" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb48-188"><a href="#cb48-188" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
@@ -2545,165 +2543,164 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb48-756"><a href="#cb48-756" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb48-757"><a href="#cb48-757" aria-hidden="true" tabindex="-1"></a><span class="fu">## Traditional AUDPC analysis (mixed model + Tukey)</span></span>
 <span id="cb48-758"><a href="#cb48-758" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-759"><a href="#cb48-759" aria-hidden="true" tabindex="-1"></a>**Important design note.** Your script uses one AUDPC per <span class="in">`Hibrido × Ambiente`</span>:</span>
-<span id="cb48-760"><a href="#cb48-760" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-761"><a href="#cb48-761" aria-hidden="true" tabindex="-1"></a><span class="in">``` r</span></span>
-<span id="cb48-762"><a href="#cb48-762" aria-hidden="true" tabindex="-1"></a>audpc_df <span class="ot">&lt;-</span> dat <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(Ambiente, Hibrido) <span class="sc">%&gt;%</span> <span class="fu">summarise</span>(<span class="at">AUDPC =</span> ..., <span class="at">.groups=</span><span class="st">"drop"</span>)</span>
-<span id="cb48-763"><a href="#cb48-763" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb48-764"><a href="#cb48-764" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-765"><a href="#cb48-765" aria-hidden="true" tabindex="-1"></a>This is appropriate if (a) <span class="in">`Parcela`</span> is not a true replication factor, or (b) you intentionally aggregate within environment. If you do have plot-level replication and want plot-level inference, compute AUDPC by <span class="in">`Ambiente × Hibrido × Parcela`</span> and fit a corresponding mixed model.</span>
-<span id="cb48-766"><a href="#cb48-766" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-767"><a href="#cb48-767" aria-hidden="true" tabindex="-1"></a><span class="fu">### Compute AUDPC and fit model</span></span>
-<span id="cb48-768"><a href="#cb48-768" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-771"><a href="#cb48-771" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb48-772"><a href="#cb48-772" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: audpc-model</span></span>
-<span id="cb48-773"><a href="#cb48-773" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-774"><a href="#cb48-774" aria-hidden="true" tabindex="-1"></a>audpc_df <span class="ot">&lt;-</span> dat <span class="sc">%&gt;%</span></span>
-<span id="cb48-775"><a href="#cb48-775" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(Ambiente, Hibrido) <span class="sc">%&gt;%</span></span>
-<span id="cb48-776"><a href="#cb48-776" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">AUDPC =</span> pracma<span class="sc">::</span><span class="fu">trapz</span>(DAE, y), <span class="at">.groups =</span> <span class="st">"drop"</span>)</span>
-<span id="cb48-777"><a href="#cb48-777" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-778"><a href="#cb48-778" aria-hidden="true" tabindex="-1"></a>audpc_df2 <span class="ot">&lt;-</span> audpc_df <span class="sc">%&gt;%</span></span>
-<span id="cb48-779"><a href="#cb48-779" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
-<span id="cb48-780"><a href="#cb48-780" aria-hidden="true" tabindex="-1"></a>    <span class="at">Ambiente =</span> <span class="fu">factor</span>(Ambiente),</span>
-<span id="cb48-781"><a href="#cb48-781" aria-hidden="true" tabindex="-1"></a>    <span class="at">Hibrido  =</span> <span class="fu">factor</span>(Hibrido),</span>
-<span id="cb48-782"><a href="#cb48-782" aria-hidden="true" tabindex="-1"></a>    <span class="at">AUDPC    =</span> <span class="fu">as.numeric</span>(AUDPC)</span>
-<span id="cb48-783"><a href="#cb48-783" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
-<span id="cb48-784"><a href="#cb48-784" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">is.finite</span>(AUDPC))</span>
-<span id="cb48-785"><a href="#cb48-785" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-786"><a href="#cb48-786" aria-hidden="true" tabindex="-1"></a><span class="co"># Mixed model: random intercept for Ambiente (as in your earlier block)</span></span>
-<span id="cb48-787"><a href="#cb48-787" aria-hidden="true" tabindex="-1"></a>m_audpc <span class="ot">&lt;-</span> <span class="fu">lmer</span>(AUDPC <span class="sc">~</span> Hibrido <span class="sc">+</span> (<span class="dv">1</span> <span class="sc">|</span> Ambiente), <span class="at">data =</span> audpc_df2)</span>
-<span id="cb48-788"><a href="#cb48-788" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(m_audpc)</span>
-<span id="cb48-789"><a href="#cb48-789" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb48-790"><a href="#cb48-790" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-791"><a href="#cb48-791" aria-hidden="true" tabindex="-1"></a><span class="fu">### Model checks (DHARMa)</span></span>
-<span id="cb48-792"><a href="#cb48-792" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-795"><a href="#cb48-795" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb48-796"><a href="#cb48-796" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: audpc-diagnostics</span></span>
-<span id="cb48-797"><a href="#cb48-797" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-798"><a href="#cb48-798" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">1</span>)</span>
-<span id="cb48-799"><a href="#cb48-799" aria-hidden="true" tabindex="-1"></a>res_a <span class="ot">&lt;-</span> <span class="fu">simulateResiduals</span>(m_audpc, <span class="at">n =</span> <span class="dv">2000</span>)</span>
-<span id="cb48-800"><a href="#cb48-800" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-801"><a href="#cb48-801" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(res_a)</span>
-<span id="cb48-802"><a href="#cb48-802" aria-hidden="true" tabindex="-1"></a><span class="fu">testUniformity</span>(res_a)</span>
-<span id="cb48-803"><a href="#cb48-803" aria-hidden="true" tabindex="-1"></a><span class="fu">testDispersion</span>(res_a)</span>
-<span id="cb48-804"><a href="#cb48-804" aria-hidden="true" tabindex="-1"></a><span class="fu">testOutliers</span>(res_a)</span>
-<span id="cb48-805"><a href="#cb48-805" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb48-806"><a href="#cb48-806" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-807"><a href="#cb48-807" aria-hidden="true" tabindex="-1"></a><span class="fu">### Hybrid means + Tukey letters</span></span>
-<span id="cb48-808"><a href="#cb48-808" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-811"><a href="#cb48-811" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb48-812"><a href="#cb48-812" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: audpc-tukey</span></span>
-<span id="cb48-813"><a href="#cb48-813" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-814"><a href="#cb48-814" aria-hidden="true" tabindex="-1"></a>emm_h <span class="ot">&lt;-</span> <span class="fu">emmeans</span>(m_audpc, <span class="sc">~</span> Hibrido)</span>
-<span id="cb48-815"><a href="#cb48-815" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-816"><a href="#cb48-816" aria-hidden="true" tabindex="-1"></a>cld_res <span class="ot">&lt;-</span> multcomp<span class="sc">::</span><span class="fu">cld</span>(</span>
-<span id="cb48-817"><a href="#cb48-817" aria-hidden="true" tabindex="-1"></a>  emm_h,</span>
-<span id="cb48-818"><a href="#cb48-818" aria-hidden="true" tabindex="-1"></a>  <span class="at">Letters =</span> letters,</span>
-<span id="cb48-819"><a href="#cb48-819" aria-hidden="true" tabindex="-1"></a>  <span class="at">adjust  =</span> <span class="st">"tukey"</span></span>
-<span id="cb48-820"><a href="#cb48-820" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb48-821"><a href="#cb48-821" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-822"><a href="#cb48-822" aria-hidden="true" tabindex="-1"></a>audpc_groups <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(cld_res) <span class="sc">%&gt;%</span></span>
-<span id="cb48-823"><a href="#cb48-823" aria-hidden="true" tabindex="-1"></a>  <span class="fu">transmute</span>(</span>
-<span id="cb48-824"><a href="#cb48-824" aria-hidden="true" tabindex="-1"></a>    Hibrido,</span>
-<span id="cb48-825"><a href="#cb48-825" aria-hidden="true" tabindex="-1"></a>    emmean,</span>
-<span id="cb48-826"><a href="#cb48-826" aria-hidden="true" tabindex="-1"></a>    SE,</span>
-<span id="cb48-827"><a href="#cb48-827" aria-hidden="true" tabindex="-1"></a>    df,</span>
-<span id="cb48-828"><a href="#cb48-828" aria-hidden="true" tabindex="-1"></a>    lower.CL,</span>
-<span id="cb48-829"><a href="#cb48-829" aria-hidden="true" tabindex="-1"></a>    upper.CL,</span>
-<span id="cb48-830"><a href="#cb48-830" aria-hidden="true" tabindex="-1"></a>    <span class="at">.group =</span> stringr<span class="sc">::</span><span class="fu">str_squish</span>(.group)</span>
-<span id="cb48-831"><a href="#cb48-831" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
-<span id="cb48-832"><a href="#cb48-832" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(emmean)</span>
-<span id="cb48-833"><a href="#cb48-833" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-834"><a href="#cb48-834" aria-hidden="true" tabindex="-1"></a>audpc_groups</span>
-<span id="cb48-835"><a href="#cb48-835" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb48-836"><a href="#cb48-836" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-837"><a href="#cb48-837" aria-hidden="true" tabindex="-1"></a><span class="fu">### Merge Tukey groups with functional clusters</span></span>
-<span id="cb48-838"><a href="#cb48-838" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-841"><a href="#cb48-841" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb48-842"><a href="#cb48-842" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: audpc-merge-functional</span></span>
-<span id="cb48-843"><a href="#cb48-843" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-844"><a href="#cb48-844" aria-hidden="true" tabindex="-1"></a>final_compare <span class="ot">&lt;-</span> audpc_groups <span class="sc">%&gt;%</span></span>
-<span id="cb48-845"><a href="#cb48-845" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(</span>
-<span id="cb48-846"><a href="#cb48-846" aria-hidden="true" tabindex="-1"></a>    cluster_table2 <span class="sc">%&gt;%</span> <span class="fu">select</span>(Hibrido, cluster, phenotype),</span>
-<span id="cb48-847"><a href="#cb48-847" aria-hidden="true" tabindex="-1"></a>    <span class="at">by =</span> <span class="st">"Hibrido"</span></span>
-<span id="cb48-848"><a href="#cb48-848" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
-<span id="cb48-849"><a href="#cb48-849" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(emmean)</span>
-<span id="cb48-850"><a href="#cb48-850" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-851"><a href="#cb48-851" aria-hidden="true" tabindex="-1"></a>final_compare</span>
-<span id="cb48-852"><a href="#cb48-852" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb48-853"><a href="#cb48-853" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-854"><a href="#cb48-854" aria-hidden="true" tabindex="-1"></a><span class="fu">### Plot: AUDPC means, CI, Tukey letters (colored by functional phenotype)</span></span>
-<span id="cb48-855"><a href="#cb48-855" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-858"><a href="#cb48-858" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb48-859"><a href="#cb48-859" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: audpc-plot</span></span>
-<span id="cb48-860"><a href="#cb48-860" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-861"><a href="#cb48-861" aria-hidden="true" tabindex="-1"></a>plot_df <span class="ot">&lt;-</span> final_compare <span class="sc">%&gt;%</span></span>
-<span id="cb48-862"><a href="#cb48-862" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
-<span id="cb48-863"><a href="#cb48-863" aria-hidden="true" tabindex="-1"></a>    <span class="at">hybrid_short =</span> <span class="fu">shorten_hybrid</span>(Hibrido),</span>
-<span id="cb48-864"><a href="#cb48-864" aria-hidden="true" tabindex="-1"></a>    <span class="at">cluster =</span> <span class="fu">factor</span>(cluster)</span>
-<span id="cb48-865"><a href="#cb48-865" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb48-866"><a href="#cb48-866" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-867"><a href="#cb48-867" aria-hidden="true" tabindex="-1"></a>cols <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"#D55E00"</span>, <span class="st">"#0072B2"</span>, <span class="st">"#009E73"</span>, <span class="st">"#CC79A7"</span>)[<span class="dv">1</span><span class="sc">:</span>k_clusters]</span>
-<span id="cb48-868"><a href="#cb48-868" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-869"><a href="#cb48-869" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(plot_df,</span>
-<span id="cb48-870"><a href="#cb48-870" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">y =</span> <span class="fu">reorder</span>(hybrid_short, emmean),</span>
-<span id="cb48-871"><a href="#cb48-871" aria-hidden="true" tabindex="-1"></a>           <span class="at">x =</span> emmean,</span>
-<span id="cb48-872"><a href="#cb48-872" aria-hidden="true" tabindex="-1"></a>           <span class="at">color =</span> cluster)) <span class="sc">+</span></span>
-<span id="cb48-873"><a href="#cb48-873" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
-<span id="cb48-874"><a href="#cb48-874" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> cols) <span class="sc">+</span></span>
-<span id="cb48-875"><a href="#cb48-875" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_errorbarh</span>(<span class="fu">aes</span>(<span class="at">xmin =</span> lower.CL, <span class="at">xmax =</span> upper.CL), <span class="at">height =</span> <span class="fl">0.12</span>) <span class="sc">+</span></span>
-<span id="cb48-876"><a href="#cb48-876" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_text</span>(<span class="fu">aes</span>(<span class="at">label =</span> .group), <span class="at">hjust =</span> <span class="dv">0</span>, <span class="at">vjust =</span> <span class="sc">-</span><span class="dv">1</span>, <span class="at">size =</span> <span class="dv">4</span>, <span class="at">color =</span> <span class="st">"black"</span>) <span class="sc">+</span></span>
-<span id="cb48-877"><a href="#cb48-877" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
-<span id="cb48-878"><a href="#cb48-878" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"AUDPC"</span>,</span>
-<span id="cb48-879"><a href="#cb48-879" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">"Hybrid"</span>,</span>
-<span id="cb48-880"><a href="#cb48-880" aria-hidden="true" tabindex="-1"></a>    <span class="at">color =</span> <span class="st">"Functional phenotype"</span>,</span>
-<span id="cb48-881"><a href="#cb48-881" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="cn">NULL</span></span>
-<span id="cb48-882"><a href="#cb48-882" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
-<span id="cb48-883"><a href="#cb48-883" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>) <span class="sc">+</span></span>
-<span id="cb48-884"><a href="#cb48-884" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_cartesian</span>(<span class="at">xlim =</span> <span class="fu">c</span>(<span class="fu">min</span>(plot_df<span class="sc">$</span>lower.CL), <span class="fu">max</span>(plot_df<span class="sc">$</span>upper.CL) <span class="sc">*</span> <span class="fl">1.10</span>))</span>
-<span id="cb48-885"><a href="#cb48-885" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb48-886"><a href="#cb48-886" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-887"><a href="#cb48-887" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
-<span id="cb48-888"><a href="#cb48-888" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-889"><a href="#cb48-889" aria-hidden="true" tabindex="-1"></a><span class="fu">## Optional: run `compare_curves()` from `{r4pde}`</span></span>
-<span id="cb48-890"><a href="#cb48-890" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-891"><a href="#cb48-891" aria-hidden="true" tabindex="-1"></a>This section reproduces your final call, assuming <span class="in">`{r4pde}`</span> is installed and your <span class="in">`dat`</span> object matches the required schema.</span>
-<span id="cb48-892"><a href="#cb48-892" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-895"><a href="#cb48-895" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb48-896"><a href="#cb48-896" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: r4pde-compare-curves</span></span>
-<span id="cb48-897"><a href="#cb48-897" aria-hidden="true" tabindex="-1"></a><span class="co">#| eval: false</span></span>
-<span id="cb48-898"><a href="#cb48-898" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-899"><a href="#cb48-899" aria-hidden="true" tabindex="-1"></a><span class="co">#pak::pkg_install("emdelponte/r4pde")</span></span>
-<span id="cb48-900"><a href="#cb48-900" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(r4pde)</span>
-<span id="cb48-901"><a href="#cb48-901" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-902"><a href="#cb48-902" aria-hidden="true" tabindex="-1"></a>m1 <span class="ot">&lt;-</span> <span class="fu">compare_curves</span>(</span>
-<span id="cb48-903"><a href="#cb48-903" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> dat,</span>
-<span id="cb48-904"><a href="#cb48-904" aria-hidden="true" tabindex="-1"></a>  <span class="at">time =</span> <span class="st">"DAE"</span>,</span>
-<span id="cb48-905"><a href="#cb48-905" aria-hidden="true" tabindex="-1"></a>  <span class="at">response =</span> <span class="st">"y"</span>,</span>
-<span id="cb48-906"><a href="#cb48-906" aria-hidden="true" tabindex="-1"></a>  <span class="at">treatment =</span> <span class="st">"Hibrido"</span>,</span>
-<span id="cb48-907"><a href="#cb48-907" aria-hidden="true" tabindex="-1"></a>  <span class="at">environment =</span> <span class="st">"Ambiente"</span>,</span>
-<span id="cb48-908"><a href="#cb48-908" aria-hidden="true" tabindex="-1"></a>  <span class="at">test_factor =</span> <span class="st">"resistance"</span>,</span>
-<span id="cb48-909"><a href="#cb48-909" aria-hidden="true" tabindex="-1"></a>  <span class="at">perm_unit =</span> <span class="st">"Hibrido"</span>,</span>
-<span id="cb48-910"><a href="#cb48-910" aria-hidden="true" tabindex="-1"></a>  <span class="at">perm_strata =</span> <span class="st">"Ambiente"</span>,</span>
-<span id="cb48-911"><a href="#cb48-911" aria-hidden="true" tabindex="-1"></a>  <span class="at">test_mode =</span> <span class="st">"global"</span>,</span>
-<span id="cb48-912"><a href="#cb48-912" aria-hidden="true" tabindex="-1"></a>  <span class="at">bootstrap =</span> <span class="cn">TRUE</span>,</span>
-<span id="cb48-913"><a href="#cb48-913" aria-hidden="true" tabindex="-1"></a>  <span class="at">boot_B =</span> <span class="dv">399</span></span>
-<span id="cb48-914"><a href="#cb48-914" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb48-915"><a href="#cb48-915" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-916"><a href="#cb48-916" aria-hidden="true" tabindex="-1"></a>m1</span>
-<span id="cb48-917"><a href="#cb48-917" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(m1)</span>
-<span id="cb48-918"><a href="#cb48-918" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_curves</span>(m1)</span>
-<span id="cb48-919"><a href="#cb48-919" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_dendrogram</span>(m1)</span>
-<span id="cb48-920"><a href="#cb48-920" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb48-921"><a href="#cb48-921" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-922"><a href="#cb48-922" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
-<span id="cb48-923"><a href="#cb48-923" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-924"><a href="#cb48-924" aria-hidden="true" tabindex="-1"></a><span class="fu">## Session info</span></span>
-<span id="cb48-925"><a href="#cb48-925" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-928"><a href="#cb48-928" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb48-929"><a href="#cb48-929" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: session-info</span></span>
-<span id="cb48-930"><a href="#cb48-930" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span>
-<span id="cb48-931"><a href="#cb48-931" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb48-759"><a href="#cb48-759" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-760"><a href="#cb48-760" aria-hidden="true" tabindex="-1"></a><span class="in">``` r</span></span>
+<span id="cb48-761"><a href="#cb48-761" aria-hidden="true" tabindex="-1"></a>audpc_df <span class="ot">&lt;-</span> dat <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(Ambiente, Hibrido) <span class="sc">%&gt;%</span> <span class="fu">summarise</span>(<span class="at">AUDPC =</span> ..., <span class="at">.groups=</span><span class="st">"drop"</span>)</span>
+<span id="cb48-762"><a href="#cb48-762" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb48-763"><a href="#cb48-763" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-764"><a href="#cb48-764" aria-hidden="true" tabindex="-1"></a>This is appropriate if (a) <span class="in">`Parcela`</span> is not a true replication factor, or (b) you intentionally aggregate within environment. If you do have plot-level replication and want plot-level inference, compute AUDPC by <span class="in">`Ambiente × Hibrido × Parcela`</span> and fit a corresponding mixed model.</span>
+<span id="cb48-765"><a href="#cb48-765" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-766"><a href="#cb48-766" aria-hidden="true" tabindex="-1"></a><span class="fu">### Compute AUDPC and fit model</span></span>
+<span id="cb48-767"><a href="#cb48-767" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-770"><a href="#cb48-770" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb48-771"><a href="#cb48-771" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: audpc-model</span></span>
+<span id="cb48-772"><a href="#cb48-772" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-773"><a href="#cb48-773" aria-hidden="true" tabindex="-1"></a>audpc_df <span class="ot">&lt;-</span> dat <span class="sc">%&gt;%</span></span>
+<span id="cb48-774"><a href="#cb48-774" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(Ambiente, Hibrido) <span class="sc">%&gt;%</span></span>
+<span id="cb48-775"><a href="#cb48-775" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">AUDPC =</span> pracma<span class="sc">::</span><span class="fu">trapz</span>(DAE, y), <span class="at">.groups =</span> <span class="st">"drop"</span>)</span>
+<span id="cb48-776"><a href="#cb48-776" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-777"><a href="#cb48-777" aria-hidden="true" tabindex="-1"></a>audpc_df2 <span class="ot">&lt;-</span> audpc_df <span class="sc">%&gt;%</span></span>
+<span id="cb48-778"><a href="#cb48-778" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb48-779"><a href="#cb48-779" aria-hidden="true" tabindex="-1"></a>    <span class="at">Ambiente =</span> <span class="fu">factor</span>(Ambiente),</span>
+<span id="cb48-780"><a href="#cb48-780" aria-hidden="true" tabindex="-1"></a>    <span class="at">Hibrido  =</span> <span class="fu">factor</span>(Hibrido),</span>
+<span id="cb48-781"><a href="#cb48-781" aria-hidden="true" tabindex="-1"></a>    <span class="at">AUDPC    =</span> <span class="fu">as.numeric</span>(AUDPC)</span>
+<span id="cb48-782"><a href="#cb48-782" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb48-783"><a href="#cb48-783" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">is.finite</span>(AUDPC))</span>
+<span id="cb48-784"><a href="#cb48-784" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-785"><a href="#cb48-785" aria-hidden="true" tabindex="-1"></a><span class="co"># Mixed model: random intercept for Ambiente (as in your earlier block)</span></span>
+<span id="cb48-786"><a href="#cb48-786" aria-hidden="true" tabindex="-1"></a>m_audpc <span class="ot">&lt;-</span> <span class="fu">lmer</span>(AUDPC <span class="sc">~</span> Hibrido <span class="sc">+</span> (<span class="dv">1</span> <span class="sc">|</span> Ambiente), <span class="at">data =</span> audpc_df2)</span>
+<span id="cb48-787"><a href="#cb48-787" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(m_audpc)</span>
+<span id="cb48-788"><a href="#cb48-788" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb48-789"><a href="#cb48-789" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-790"><a href="#cb48-790" aria-hidden="true" tabindex="-1"></a><span class="fu">### Model checks (DHARMa)</span></span>
+<span id="cb48-791"><a href="#cb48-791" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-794"><a href="#cb48-794" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb48-795"><a href="#cb48-795" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: audpc-diagnostics</span></span>
+<span id="cb48-796"><a href="#cb48-796" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-797"><a href="#cb48-797" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">1</span>)</span>
+<span id="cb48-798"><a href="#cb48-798" aria-hidden="true" tabindex="-1"></a>res_a <span class="ot">&lt;-</span> <span class="fu">simulateResiduals</span>(m_audpc, <span class="at">n =</span> <span class="dv">2000</span>)</span>
+<span id="cb48-799"><a href="#cb48-799" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-800"><a href="#cb48-800" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(res_a)</span>
+<span id="cb48-801"><a href="#cb48-801" aria-hidden="true" tabindex="-1"></a><span class="fu">testUniformity</span>(res_a)</span>
+<span id="cb48-802"><a href="#cb48-802" aria-hidden="true" tabindex="-1"></a><span class="fu">testDispersion</span>(res_a)</span>
+<span id="cb48-803"><a href="#cb48-803" aria-hidden="true" tabindex="-1"></a><span class="fu">testOutliers</span>(res_a)</span>
+<span id="cb48-804"><a href="#cb48-804" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb48-805"><a href="#cb48-805" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-806"><a href="#cb48-806" aria-hidden="true" tabindex="-1"></a><span class="fu">### Hybrid means + Tukey letters</span></span>
+<span id="cb48-807"><a href="#cb48-807" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-810"><a href="#cb48-810" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb48-811"><a href="#cb48-811" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: audpc-tukey</span></span>
+<span id="cb48-812"><a href="#cb48-812" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-813"><a href="#cb48-813" aria-hidden="true" tabindex="-1"></a>emm_h <span class="ot">&lt;-</span> <span class="fu">emmeans</span>(m_audpc, <span class="sc">~</span> Hibrido)</span>
+<span id="cb48-814"><a href="#cb48-814" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-815"><a href="#cb48-815" aria-hidden="true" tabindex="-1"></a>cld_res <span class="ot">&lt;-</span> multcomp<span class="sc">::</span><span class="fu">cld</span>(</span>
+<span id="cb48-816"><a href="#cb48-816" aria-hidden="true" tabindex="-1"></a>  emm_h,</span>
+<span id="cb48-817"><a href="#cb48-817" aria-hidden="true" tabindex="-1"></a>  <span class="at">Letters =</span> letters,</span>
+<span id="cb48-818"><a href="#cb48-818" aria-hidden="true" tabindex="-1"></a>  <span class="at">adjust  =</span> <span class="st">"tukey"</span></span>
+<span id="cb48-819"><a href="#cb48-819" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb48-820"><a href="#cb48-820" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-821"><a href="#cb48-821" aria-hidden="true" tabindex="-1"></a>audpc_groups <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(cld_res) <span class="sc">%&gt;%</span></span>
+<span id="cb48-822"><a href="#cb48-822" aria-hidden="true" tabindex="-1"></a>  <span class="fu">transmute</span>(</span>
+<span id="cb48-823"><a href="#cb48-823" aria-hidden="true" tabindex="-1"></a>    Hibrido,</span>
+<span id="cb48-824"><a href="#cb48-824" aria-hidden="true" tabindex="-1"></a>    emmean,</span>
+<span id="cb48-825"><a href="#cb48-825" aria-hidden="true" tabindex="-1"></a>    SE,</span>
+<span id="cb48-826"><a href="#cb48-826" aria-hidden="true" tabindex="-1"></a>    df,</span>
+<span id="cb48-827"><a href="#cb48-827" aria-hidden="true" tabindex="-1"></a>    lower.CL,</span>
+<span id="cb48-828"><a href="#cb48-828" aria-hidden="true" tabindex="-1"></a>    upper.CL,</span>
+<span id="cb48-829"><a href="#cb48-829" aria-hidden="true" tabindex="-1"></a>    <span class="at">.group =</span> stringr<span class="sc">::</span><span class="fu">str_squish</span>(.group)</span>
+<span id="cb48-830"><a href="#cb48-830" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb48-831"><a href="#cb48-831" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(emmean)</span>
+<span id="cb48-832"><a href="#cb48-832" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-833"><a href="#cb48-833" aria-hidden="true" tabindex="-1"></a>audpc_groups</span>
+<span id="cb48-834"><a href="#cb48-834" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb48-835"><a href="#cb48-835" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-836"><a href="#cb48-836" aria-hidden="true" tabindex="-1"></a><span class="fu">### Merge Tukey groups with functional clusters</span></span>
+<span id="cb48-837"><a href="#cb48-837" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-840"><a href="#cb48-840" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb48-841"><a href="#cb48-841" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: audpc-merge-functional</span></span>
+<span id="cb48-842"><a href="#cb48-842" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-843"><a href="#cb48-843" aria-hidden="true" tabindex="-1"></a>final_compare <span class="ot">&lt;-</span> audpc_groups <span class="sc">%&gt;%</span></span>
+<span id="cb48-844"><a href="#cb48-844" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(</span>
+<span id="cb48-845"><a href="#cb48-845" aria-hidden="true" tabindex="-1"></a>    cluster_table2 <span class="sc">%&gt;%</span> <span class="fu">select</span>(Hibrido, cluster, phenotype),</span>
+<span id="cb48-846"><a href="#cb48-846" aria-hidden="true" tabindex="-1"></a>    <span class="at">by =</span> <span class="st">"Hibrido"</span></span>
+<span id="cb48-847"><a href="#cb48-847" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb48-848"><a href="#cb48-848" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(emmean)</span>
+<span id="cb48-849"><a href="#cb48-849" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-850"><a href="#cb48-850" aria-hidden="true" tabindex="-1"></a>final_compare</span>
+<span id="cb48-851"><a href="#cb48-851" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb48-852"><a href="#cb48-852" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-853"><a href="#cb48-853" aria-hidden="true" tabindex="-1"></a><span class="fu">### Plot: AUDPC means, CI, Tukey letters (colored by functional phenotype)</span></span>
+<span id="cb48-854"><a href="#cb48-854" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-857"><a href="#cb48-857" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb48-858"><a href="#cb48-858" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: audpc-plot</span></span>
+<span id="cb48-859"><a href="#cb48-859" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-860"><a href="#cb48-860" aria-hidden="true" tabindex="-1"></a>plot_df <span class="ot">&lt;-</span> final_compare <span class="sc">%&gt;%</span></span>
+<span id="cb48-861"><a href="#cb48-861" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb48-862"><a href="#cb48-862" aria-hidden="true" tabindex="-1"></a>    <span class="at">hybrid_short =</span> <span class="fu">shorten_hybrid</span>(Hibrido),</span>
+<span id="cb48-863"><a href="#cb48-863" aria-hidden="true" tabindex="-1"></a>    <span class="at">cluster =</span> <span class="fu">factor</span>(cluster)</span>
+<span id="cb48-864"><a href="#cb48-864" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb48-865"><a href="#cb48-865" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-866"><a href="#cb48-866" aria-hidden="true" tabindex="-1"></a>cols <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"#D55E00"</span>, <span class="st">"#0072B2"</span>, <span class="st">"#009E73"</span>, <span class="st">"#CC79A7"</span>)[<span class="dv">1</span><span class="sc">:</span>k_clusters]</span>
+<span id="cb48-867"><a href="#cb48-867" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-868"><a href="#cb48-868" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(plot_df,</span>
+<span id="cb48-869"><a href="#cb48-869" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">y =</span> <span class="fu">reorder</span>(hybrid_short, emmean),</span>
+<span id="cb48-870"><a href="#cb48-870" aria-hidden="true" tabindex="-1"></a>           <span class="at">x =</span> emmean,</span>
+<span id="cb48-871"><a href="#cb48-871" aria-hidden="true" tabindex="-1"></a>           <span class="at">color =</span> cluster)) <span class="sc">+</span></span>
+<span id="cb48-872"><a href="#cb48-872" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
+<span id="cb48-873"><a href="#cb48-873" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> cols) <span class="sc">+</span></span>
+<span id="cb48-874"><a href="#cb48-874" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_errorbarh</span>(<span class="fu">aes</span>(<span class="at">xmin =</span> lower.CL, <span class="at">xmax =</span> upper.CL), <span class="at">height =</span> <span class="fl">0.12</span>) <span class="sc">+</span></span>
+<span id="cb48-875"><a href="#cb48-875" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_text</span>(<span class="fu">aes</span>(<span class="at">label =</span> .group), <span class="at">hjust =</span> <span class="dv">0</span>, <span class="at">vjust =</span> <span class="sc">-</span><span class="dv">1</span>, <span class="at">size =</span> <span class="dv">4</span>, <span class="at">color =</span> <span class="st">"black"</span>) <span class="sc">+</span></span>
+<span id="cb48-876"><a href="#cb48-876" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb48-877"><a href="#cb48-877" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"AUDPC"</span>,</span>
+<span id="cb48-878"><a href="#cb48-878" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">"Hybrid"</span>,</span>
+<span id="cb48-879"><a href="#cb48-879" aria-hidden="true" tabindex="-1"></a>    <span class="at">color =</span> <span class="st">"Functional phenotype"</span>,</span>
+<span id="cb48-880"><a href="#cb48-880" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="cn">NULL</span></span>
+<span id="cb48-881"><a href="#cb48-881" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb48-882"><a href="#cb48-882" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>) <span class="sc">+</span></span>
+<span id="cb48-883"><a href="#cb48-883" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_cartesian</span>(<span class="at">xlim =</span> <span class="fu">c</span>(<span class="fu">min</span>(plot_df<span class="sc">$</span>lower.CL), <span class="fu">max</span>(plot_df<span class="sc">$</span>upper.CL) <span class="sc">*</span> <span class="fl">1.10</span>))</span>
+<span id="cb48-884"><a href="#cb48-884" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb48-885"><a href="#cb48-885" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-886"><a href="#cb48-886" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
+<span id="cb48-887"><a href="#cb48-887" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-888"><a href="#cb48-888" aria-hidden="true" tabindex="-1"></a><span class="fu">## Optional: run `compare_curves()` from `{r4pde}`</span></span>
+<span id="cb48-889"><a href="#cb48-889" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-890"><a href="#cb48-890" aria-hidden="true" tabindex="-1"></a>This section reproduces your final call, assuming <span class="in">`{r4pde}`</span> is installed and your <span class="in">`dat`</span> object matches the required schema.</span>
+<span id="cb48-891"><a href="#cb48-891" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-894"><a href="#cb48-894" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb48-895"><a href="#cb48-895" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: r4pde-compare-curves</span></span>
+<span id="cb48-896"><a href="#cb48-896" aria-hidden="true" tabindex="-1"></a><span class="co">#| eval: false</span></span>
+<span id="cb48-897"><a href="#cb48-897" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-898"><a href="#cb48-898" aria-hidden="true" tabindex="-1"></a><span class="co">#pak::pkg_install("emdelponte/r4pde")</span></span>
+<span id="cb48-899"><a href="#cb48-899" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(r4pde)</span>
+<span id="cb48-900"><a href="#cb48-900" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-901"><a href="#cb48-901" aria-hidden="true" tabindex="-1"></a>m1 <span class="ot">&lt;-</span> <span class="fu">compare_curves</span>(</span>
+<span id="cb48-902"><a href="#cb48-902" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> dat,</span>
+<span id="cb48-903"><a href="#cb48-903" aria-hidden="true" tabindex="-1"></a>  <span class="at">time =</span> <span class="st">"DAE"</span>,</span>
+<span id="cb48-904"><a href="#cb48-904" aria-hidden="true" tabindex="-1"></a>  <span class="at">response =</span> <span class="st">"y"</span>,</span>
+<span id="cb48-905"><a href="#cb48-905" aria-hidden="true" tabindex="-1"></a>  <span class="at">treatment =</span> <span class="st">"Hibrido"</span>,</span>
+<span id="cb48-906"><a href="#cb48-906" aria-hidden="true" tabindex="-1"></a>  <span class="at">environment =</span> <span class="st">"Ambiente"</span>,</span>
+<span id="cb48-907"><a href="#cb48-907" aria-hidden="true" tabindex="-1"></a>  <span class="at">test_factor =</span> <span class="st">"resistance"</span>,</span>
+<span id="cb48-908"><a href="#cb48-908" aria-hidden="true" tabindex="-1"></a>  <span class="at">perm_unit =</span> <span class="st">"Hibrido"</span>,</span>
+<span id="cb48-909"><a href="#cb48-909" aria-hidden="true" tabindex="-1"></a>  <span class="at">perm_strata =</span> <span class="st">"Ambiente"</span>,</span>
+<span id="cb48-910"><a href="#cb48-910" aria-hidden="true" tabindex="-1"></a>  <span class="at">test_mode =</span> <span class="st">"global"</span>,</span>
+<span id="cb48-911"><a href="#cb48-911" aria-hidden="true" tabindex="-1"></a>  <span class="at">bootstrap =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb48-912"><a href="#cb48-912" aria-hidden="true" tabindex="-1"></a>  <span class="at">boot_B =</span> <span class="dv">399</span></span>
+<span id="cb48-913"><a href="#cb48-913" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb48-914"><a href="#cb48-914" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-915"><a href="#cb48-915" aria-hidden="true" tabindex="-1"></a>m1</span>
+<span id="cb48-916"><a href="#cb48-916" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(m1)</span>
+<span id="cb48-917"><a href="#cb48-917" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_curves</span>(m1)</span>
+<span id="cb48-918"><a href="#cb48-918" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_dendrogram</span>(m1)</span>
+<span id="cb48-919"><a href="#cb48-919" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb48-920"><a href="#cb48-920" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-921"><a href="#cb48-921" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
+<span id="cb48-922"><a href="#cb48-922" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-923"><a href="#cb48-923" aria-hidden="true" tabindex="-1"></a><span class="fu">## Session info</span></span>
+<span id="cb48-924"><a href="#cb48-924" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-927"><a href="#cb48-927" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb48-928"><a href="#cb48-928" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: session-info</span></span>
+<span id="cb48-929"><a href="#cb48-929" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span>
+<span id="cb48-930"><a href="#cb48-930" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 </code><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></pre></div>
 </div></div></div></div></div>
 </div> <!-- /content -->

@@ -165,7 +165,7 @@ dae_min <- 20
 dae_max <- 116
 
 # Minimum number of assessments per curve_id to retain
-# NOTE: your header comment said 8, but the code used 5. Keep as a parameter here.
+
 min_assess <- 5
 
 # Beta boundary adjustment
@@ -178,7 +178,7 @@ k_clusters <- 4
 grid_n <- 140
 
 # Reference environment used for "environment-adjusted" mean curves
-# (your original code used the first level; keep that default)
+
 ```
 
 ------------------------------------------------------------------------
@@ -726,7 +726,6 @@ p_sq
 
 ## Traditional AUDPC analysis (mixed model + Tukey)
 
-**Important design note.** Your script uses one AUDPC per `Hibrido × Ambiente`:
 
 ``` r
 audpc_df <- dat %>% group_by(Ambiente, Hibrido) %>% summarise(AUDPC = ..., .groups="drop")
