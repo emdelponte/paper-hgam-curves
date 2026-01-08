@@ -375,6 +375,57 @@ m_gam <- mgcv::bam(
 mgcv::gam.check(m_gam)
 AIC(m_gam)
 summary(m_gam)
+
+
+m_gam2 <- mgcv::bam(
+  y ~ s(DAE, k = 10) +
+    s(DAE, Ambiente, bs = "fs", k = 6, m = 2) +  # k↑, m=2
+    s(DAE, Hibrido,  bs = "fs", k = 6, m = 2) +
+    s(curve_id, bs = "re"),
+  family   = mgcv::betar(link = "logit"),
+  data     = dat,
+  method   = "fREML",
+  discrete = TRUE,
+  gamma    = 1.4,
+  select   = TRUE
+)
+
+mgcv::gam.check(m_gam2)
+AIC(m_gam2)
+summary(m_gam2)
+
+AIC(m_gam, m_gam2)
+BIC(m_gam, m_gam2)
+
+
+
+tibble(
+  Modelo = c("k=4, m=1", "k=6, m=2"),
+  AIC = c(-4425.6, -4469.4),
+  BIC = c(-3886.9, -3892.1),
+  edf_total = c(112.6, 120.6),
+  edf_ambiente = c(17.5, 24.0),
+  k_index_min = c(1.08, 1.11)
+)
+
+library(tidyverse)
+
+dat <- dat %>%
+  mutate(
+    res_k4 = residuals(m_gam, type = "pearson"),
+    res_k6 = residuals(m_gam2, type = "pearson")
+  )
+
+# Desvio padrão dos resíduos por ambiente
+dat %>%
+  group_by(Ambiente) %>%
+  summarise(
+    SD_k4 = sd(res_k4),
+    SD_k6 = sd(res_k6),
+    Melhoria = (SD_k4 - SD_k6) / SD_k4 * 100
+  ) %>%
+  arrange(desc(Melhoria))
+
 ```
 
 ### Diagnostics (observed vs fitted and residuals)
@@ -382,14 +433,14 @@ summary(m_gam)
 ```{r}
 #| label: gam-diagnostics
 
-dat$mu_hat <- predict(m_gam, type = "response")
+dat$mu_hat <- predict(m_gam2, type = "response")
 
 ggplot(dat, aes(mu_hat, y)) +
   geom_point(alpha = 0.3) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
   labs(x = "Fitted", y = "Observed")
 
-res <- residuals(m_gam, type = "pearson")
+res <- residuals(m_gam2, type = "pearson")
 plot(dat$DAE, res)
 abline(h = 0, lty = 2)
 ```
@@ -421,7 +472,7 @@ pred_cult <- map_dfr(cultivars, function(cv){
   )
 
   mu <- predict(
-    m_gam, newdata = newd, type = "response",
+    m_gam2, newdata = newd, type = "response",
     exclude = c("s(DAE,Ambiente)", "s(curve_id)")
   )
   tibble(Hibrido = cv, DAE = t_grid, mu = as.numeric(mu))
