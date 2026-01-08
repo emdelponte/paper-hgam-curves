@@ -14,6 +14,8 @@ execute:
   echo: true
   message: false
   warning: false
+editor_options: 
+  chunk_output_type: console
 ---
 
 ## Overview
@@ -507,13 +509,15 @@ pred_cult2 <- pred_cult %>%
   left_join(cluster_table2 %>% select(Hibrido, phenotype), by = "Hibrido") %>%
   mutate(hybrid_short = shorten_hybrid(Hibrido))
 
+pred_cult2 <- left_join(pred_cult2, bipolaris_df)
+
 label_df <- pred_cult2 %>%
   group_by(Hibrido) %>%
   filter(DAE == max(DAE, na.rm = TRUE)) %>%
   ungroup()
 
 p_hibridos <- ggplot(pred_cult2,
-                     aes(x = DAE, y = mu, group = Hibrido, color = phenotype)) +
+                     aes(x = DAE, y = mu, group = Hibrido, linetype  = resistance, color = phenotype)) +
   geom_line(linewidth = 1.1, alpha = 0.95) +
   ggrepel::geom_text_repel(
     data = label_df,
@@ -529,7 +533,7 @@ p_hibridos <- ggplot(pred_cult2,
   scale_color_manual(values = phen_cols, drop = FALSE) +
   labs(x = "Days after emergence (DAE)",
        y = "Environment-adjusted mean severity",
-       color = "Phenotype") +
+       color = "Phenotype", linetype = "Resistance") +
   theme(legend.position = "bottom")
 
 ddata <- ggdendro::dendro_data(as.dendrogram(hc), type = "rectangle")
