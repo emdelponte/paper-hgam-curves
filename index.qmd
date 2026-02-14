@@ -637,6 +637,12 @@ We select two **individual curves** (by `curve_id`) that are close in scalar spa
 ```{r}
 #| label: killer-select-pair
 
+library(dplyr)
+library(tidyr)
+
+# ------------------------------------------------------------
+# 0) Prep scalar stats table (one row per curve)
+# ------------------------------------------------------------
 dfS <- curve_stats %>%
   transmute(
     curve_id  = as.character(curve_id),
@@ -650,46 +656,151 @@ dfS <- curve_stats %>%
     final_z = as.numeric(scale(final_sev))
   )
 
-pairs_scalar <- crossing(
-  dfS %>% rename_with(~ paste0(.x, ".x"), -curve_id) %>% rename(curve_id.x = curve_id),
-  dfS %>% rename_with(~ paste0(.x, ".y"), -curve_id) %>% rename(curve_id.y = curve_id)
-) %>%
-  filter(curve_id.x < curve_id.y) %>%
-  mutate(
-    scalar_dist = sqrt((AUDPC_z.x - AUDPC_z.y)^2 +
-                         (final_z.x - final_z.y)^2)
-  ) %>%
-  arrange(scalar_dist)
+stopifnot(nrow(dfS) >= 2)
 
-thr  <- quantile(pairs_scalar$scalar_dist, 0.03, na.rm = TRUE)
-cand <- pairs_scalar %>% filter(scalar_dist <= thr)
-
-interp_curve <- function(id){
-  df <- dat %>% filter(as.character(curve_id) == id) %>% arrange(DAE)
-  approx(df$DAE, df$y, xout = t_grid, rule = 2)$y
-}
-
+# Common dt for functional distance
 dt <- mean(diff(t_grid))
 
-cand2 <- cand %>%
-  rowwise() %>%
-  mutate(
-    func_dist = {
-      y1 <- interp_curve(curve_id.x)
-      y2 <- interp_curve(curve_id.y)
-      sqrt(sum((y1 - y2)^2) * dt)
-    }
-  ) %>%
-  ungroup()
+# ------------------------------------------------------------
+# 1) Utilities (define ONCE, keep signature consistent)
+# ------------------------------------------------------------
+interp_curve <- function(dat, t_grid, id){
+  df <- dat %>%
+    filter(as.character(curve_id) == id) %>%
+    arrange(DAE)
 
-best <- cand2 %>%
+  stats::approx(df$DAE, df$y, xout = t_grid, rule = 2)$y
+}
+
+pairwise_table <- function(dfS){
+  crossing(
+    dfS %>%
+      rename_with(~ paste0(.x, ".x"), -curve_id) %>%
+      rename(curve_id.x = curve_id),
+    dfS %>%
+      rename_with(~ paste0(.x, ".y"), -curve_id) %>%
+      rename(curve_id.y = curve_id)
+  ) %>%
+    filter(curve_id.x < curve_id.y)
+}
+
+add_func_dist <- function(pairs_df, dat, t_grid, dt){
+  pairs_df %>%
+    rowwise() %>%
+    mutate(
+      func_dist = {
+        y1 <- interp_curve(dat, t_grid, curve_id.x)
+        y2 <- interp_curve(dat, t_grid, curve_id.y)
+        sqrt(sum((y1 - y2)^2) * dt)
+      }
+    ) %>%
+    ungroup()
+}
+
+# ------------------------------------------------------------
+# 2) Build base pair table with scalar distances/gaps
+# ------------------------------------------------------------
+pairs0 <- pairwise_table(dfS) %>%
+  mutate(
+    scalar_dist = sqrt((AUDPC_z.x - AUDPC_z.y)^2 + (final_z.x - final_z.y)^2),
+    audpc_gap   = abs(AUDPC.x - AUDPC.y),
+    final_gap   = abs(final_sev.x - final_sev.y)
+  )
+
+# ------------------------------------------------------------
+# 3) Panel A: "killer pair" = very similar scalar, maximize functional distance
+# ------------------------------------------------------------
+thr  <- quantile(pairs0$scalar_dist, 0.03, na.rm = TRUE)
+candA <- pairs0 %>% filter(scalar_dist <= thr)
+
+candA2 <- candA %>%
+  add_func_dist(dat, t_grid, dt)
+
+best_A <- candA2 %>%
   arrange(desc(func_dist), scalar_dist) %>%
   slice(1)
 
-id1 <- best$curve_id.x
-id2 <- best$curve_id.y
+idA1 <- best_A$curve_id.x
+idA2 <- best_A$curve_id.y
 
-best
+# ------------------------------------------------------------
+# 4) Panel B: maximize AUDPC gap (optionally annotate functional distance)
+# ------------------------------------------------------------
+best_B <- pairs0 %>%
+  arrange(desc(audpc_gap)) %>%
+  slice(1) %>%
+  add_func_dist(dat, t_grid, dt)
+
+idB1 <- best_B$curve_id.x
+idB2 <- best_B$curve_id.y
+
+# ------------------------------------------------------------
+# 5) Panel C: same final, different AUDPC (safe fallback if empty)
+# ------------------------------------------------------------
+final_tol <- 0.03
+
+candC <- pairs0 %>% filter(final_gap <= final_tol)
+if(nrow(candC) == 0){
+  final_tol <- 0.05
+  candC <- pairs0 %>% filter(final_gap <= final_tol)
+}
+
+best_C <- candC %>%
+  arrange(desc(audpc_gap), final_gap) %>%
+  slice(1) %>%
+  add_func_dist(dat, t_grid, dt)
+
+idC1 <- best_C$curve_id.x
+idC2 <- best_C$curve_id.y
+
+# ------------------------------------------------------------
+# 6) Panel D: similar AUDPC, large functional distance (exclude used IDs)
+# ------------------------------------------------------------
+used_ids <- unique(c(idA1, idA2, idB1, idB2, idC1, idC2))
+
+pairsD <- pairs0 %>%
+  filter(!(curve_id.x %in% used_ids),
+         !(curve_id.y %in% used_ids))
+
+audpc_q <- 0.10
+cutD <- quantile(pairsD$audpc_gap, audpc_q, na.rm = TRUE)
+
+candD <- pairsD %>%
+  filter(audpc_gap <= cutD) %>%
+  add_func_dist(dat, t_grid, dt)
+
+# fallback if candD empty
+if(nrow(candD) == 0){
+  cutD <- quantile(pairsD$audpc_gap, 0.20, na.rm = TRUE)
+  candD <- pairsD %>%
+    filter(audpc_gap <= cutD) %>%
+    add_func_dist(dat, t_grid, dt)
+}
+
+best_D <- candD %>%
+  arrange(desc(func_dist), audpc_gap) %>%
+  slice(1)
+
+idD1 <- best_D$curve_id.x
+idD2 <- best_D$curve_id.y
+
+# ------------------------------------------------------------
+# Outputs you likely want
+# ------------------------------------------------------------
+list(
+  best_A = best_A,
+  best_B = best_B,
+  best_C = best_C,
+  best_D = best_D,
+  ids = list(A = c(idA1, idA2),
+             B = c(idB1, idB2),
+             C = c(idC1, idC2),
+             D = c(idD1, idD2))
+)
+
+
+
+
 ```
 
 ### Plot the two raw curves
@@ -697,83 +808,148 @@ best
 ```{r}
 #| label: killer-plot-raw
 
-plot_pair <- dat %>%
-  filter(as.character(curve_id) %in% c(id1, id2)) %>%
-  mutate(curve = if_else(as.character(curve_id) == id1, "A", "B"))
+library(dplyr)
+library(ggplot2)
 
-s1 <- dfS %>% filter(curve_id == id1)
-s2 <- dfS %>% filter(curve_id == id2)
+# ------------------------------------------------------------
+# Plot helper (consistent styling)
+# ------------------------------------------------------------
+plot_two_curves <- function(dat, dfS, id1, id2, panel_title,
+                            letter = NULL, t_grid = NULL, func_dist = NULL){
 
-ann <- glue(
-  "AUDPC  A={round(s1$AUDPC,2)}  B={round(s2$AUDPC,2)}\n",
-  "Final   A={round(s1$final_sev,2)}  B={round(s2$final_sev,2)}\n",
-  "d_S={signif(best$scalar_dist,3)}   d_F={signif(best$func_dist,3)}"
-)
+  # guards: fail fast with clear message
+  if(!inherits(dat, c("data.frame", "tbl_df", "tbl"))) {
+    stop("`dat` must be a data.frame/tibble. class(dat) = ",
+         paste(class(dat), collapse = ", "))
+  }
+  if(!inherits(dfS, c("data.frame", "tbl_df", "tbl"))) {
+    stop("`dfS` must be a data.frame/tibble. class(dfS) = ",
+         paste(class(dfS), collapse = ", "))
+  }
 
-y_top <- max(plot_pair$y, na.rm = TRUE) * 1.15
+  id1 <- as.character(id1)
+  id2 <- as.character(id2)
 
-p_main <- ggplot(plot_pair, aes(DAE, y, color = curve)) +
-  geom_point(alpha = 0.8, size = 2) +
-  geom_line(linewidth = 1) +
-  scale_color_grey() +
-  annotate("label",
-           x = min(plot_pair$DAE) + 2,
-           y = y_top - 0.02,
-           label = ann,
-           hjust = 0,
-           size = 4,
-           fill = "white") +
-  labs(
-    x = "Days after emergence (DAE)",
-    y = "Disease severity (proportion)",
-    color = "Curve"
-  ) +
-  coord_cartesian(ylim = c(0, y_top))
+  plot_pair <- dat %>%
+    dplyr::mutate(curve_id = as.character(curve_id)) %>%
+    dplyr::filter(curve_id %in% c(id1, id2)) %>%
+    dplyr::mutate(curve = dplyr::if_else(curve_id == id1, "A", "B")) %>%
+    dplyr::arrange(curve, DAE)
 
-p_main
-```
+  if(nrow(plot_pair) == 0){
+    stop("No rows found in `dat` for ids: ", id1, " and ", id2)
+  }
 
-### Difference function $\Delta(t)$ and its integral contribution
+  s1 <- dfS %>%
+    dplyr::mutate(curve_id = as.character(curve_id)) %>%
+    dplyr::filter(curve_id == id1)
 
-```{r}
-#| label: killer-delta
+  s2 <- dfS %>%
+    dplyr::mutate(curve_id = as.character(curve_id)) %>%
+    dplyr::filter(curve_id == id2)
 
-yA <- interp_curve(id1)
-yB <- interp_curve(id2)
+  if(nrow(s1) == 0 || nrow(s2) == 0){
+    stop("Missing scalar stats in `dfS` for ids: ", id1, " and/or ", id2)
+  }
 
-df_diff <- tibble(
-  DAE  = t_grid,
-  diff = yA - yB,
-  sq   = (yA - yB)^2
-)
+  # optional: pull T50 if curve_stats exists
+  if(exists("curve_stats", inherits = TRUE)){
+    t1 <- curve_stats %>%
+      dplyr::filter(as.character(curve_id) == id1) %>%
+      dplyr::pull(T50)
+    t2 <- curve_stats %>%
+      dplyr::filter(as.character(curve_id) == id2) %>%
+      dplyr::pull(T50)
+    # you can append t1/t2 to ann if you want (kept commented)
+  }
 
-dt <- mean(diff(t_grid))
-L2_sq <- sum(df_diff$sq) * dt
-L2    <- sqrt(L2_sq)
+  # compute functional distance if requested and not supplied
+  if(!is.null(t_grid) && is.null(func_dist)){
+    if(!exists("interp_curve", inherits = TRUE)){
+      stop("`interp_curve()` not found. Define it before calling plot_two_curves().")
+    }
+    dt <- mean(diff(t_grid))
+    # IMPORTANT: consistent argument order: interp_curve(dat, t_grid, id)
+    yA <- interp_curve(dat, t_grid, id1)
+    yB <- interp_curve(dat, t_grid, id2)
+    func_dist <- sqrt(sum((yA - yB)^2) * dt)
+  }
 
-p_diff <- ggplot(df_diff, aes(DAE, diff)) +
-  geom_hline(yintercept = 0, linewidth = 0.4) +
-  geom_line(linewidth = 1) +
-  labs(
-    x = "Days after emergence (DAE)",
-    y = expression(Delta(t) == y[A](t) - y[B](t)),
-    subtitle = paste0("L2 distance = ", signif(L2, 3),
-                      "  ( ∫Δ(t)^2 dt = ", signif(L2_sq, 3), " )")
+  ann <- paste0(
+    "AUDPC  A=", round(s1$AUDPC[1], 2), "  B=", round(s2$AUDPC[1], 2), "\n",
+    "Final   A=", round(s1$final_sev[1], 2), "  B=", round(s2$final_sev[1], 2),
+    if(!is.null(func_dist)) paste0("\n d_F=", signif(func_dist, 3)) else ""
   )
 
-p_sq <- ggplot(df_diff, aes(DAE, sq)) +
-  geom_line(linewidth = 1) +
-  labs(
-    x = "Days after emergence (DAE)",
-    y = expression(Delta(t)^2),
-    subtitle = "Integral of Δ(t)^2 over time drives the L2 distance"
-  )
+  y_top <- max(plot_pair$y, na.rm = TRUE) * 1.2
 
-p_diff
-p_sq
+  ggplot(plot_pair, aes(DAE, y, color = curve)) +
+    geom_point(alpha = 0.75, size = 1.8) +
+    geom_line(linewidth = 0.9) +
+    scale_color_grey(start = 0.15, end = 0.65) +
+    annotate("label",
+             x = min(plot_pair$DAE, na.rm = TRUE) + 2,
+             y = y_top - 0.1,
+             label = ann,
+             hjust = 0,
+             size = 3.2,
+             label.size = 0.25,
+             fill = "white") +
+    labs(
+       title = panel_title,
+      x = "Days after emergence (DAE)",
+      y = "Disease severity (proportion)",
+      color = "Curve"
+    ) +
+    coord_cartesian(ylim = c(0, y_top)) +
+    theme_classic(base_size = 12) +
+    theme(
+      plot.title = element_text(size = 11, face = "bold"),
+      legend.position = "bottom",
+      plot.margin = margin(6, 6, 6, 6)
+    )
+}
+
+# ------------------------------------------------------------
+# Build 4 panels
+# ------------------------------------------------------------
+pD <- plot_two_curves(dat, dfS, idA1, idA2,
+                      panel_title = "Similar AUPDC & final Severity, trajectory-distinct",
+                      t_grid = t_grid)
+
+pA <- plot_two_curves(dat, dfS, idB1, idB2,
+                      panel_title = "AUDPC discriminates epidemics",
+                      t_grid = t_grid,
+                      func_dist = best_B$func_dist)
+
+pB <- plot_two_curves(dat, dfS, idC1, idC2,
+                      panel_title = "Same final severity, different AUDPC",
+                      t_grid = t_grid,
+                      func_dist = best_C$func_dist)
+
+pC <- plot_two_curves(dat, dfS, idD1, idD2,
+                      panel_title = "Similar AUDPC, trajectory-distinct",
+                      t_grid = t_grid,
+                      func_dist = best_D$func_dist)
+
+# ------------------------------------------------------------
+# Combine into 2x2 and tag A–D
+# ------------------------------------------------------------
+fig1_panel <- (pA | pB) / (pC | pD) +
+  patchwork::plot_annotation(tag_levels = "A") +
+  patchwork::plot_layout(guides = "collect") &
+  theme(
+    legend.position = "bottom",
+    legend.direction = "horizontal"
+  )
+fig1_panel
+
+ggplot2::ggsave("Fig1.png", width = 10, height = 8, bg = "white")
+
+
 ```
 
-------------------------------------------------------------------------
+
 
 ## Traditional AUDPC analysis (mixed model + Tukey)
 
