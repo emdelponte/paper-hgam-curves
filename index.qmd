@@ -5,6 +5,7 @@ author: "Emerson M. Del Ponte"
 theme: flatly
 format:
   html:
+    html-math-method: mathml
     toc: true
     toc-depth: 3
     number-sections: true
@@ -27,12 +28,12 @@ This document implements two complementary analyses for Bipolaris leaf spot epid
 1.  **Beta-GAM (HGAM)** to smooth severity trajectories and adjust for environment.
 2.  **Environment-adjusted hybrid mean curves**.
 3.  **Functional distance** among hybrids and **hierarchical clustering** (dendrogram + curve panel).
-4.  *“Killer pair” figure:* two curves that are **scalar-equivalent** (AUDPC + final severity) but **trajectory-distinct**, with the difference function $\Delta(t)$ and its contribution to the $L^2$ distance.
+4.  Four illustrative pairs contrasting similarity in AUDPC/final severity with differences in trajectories and their $L^2$ distance. Scalar similarity is a descriptive selection criterion, not a formal equivalence test.
 
 **B. Traditional (scalar) analysis**
 
 1.  **AUDPC** per hybrid within environment (as available in the dataset design).
-2.  Mixed-model ANOVA and **Tukey** letter groups (via `emmeans::cld()`).
+2.  Mixed-model ANOVA and **Tukey** letter groups (via `multcomp::cld()` on estimated marginal means).
 3.  Merge **Tukey groups** with **functional clusters** for side-by-side comparison.
 
 ------------------------------------------------------------------------
@@ -42,7 +43,7 @@ This document implements two complementary analyses for Bipolaris leaf spot epid
 -   **Input file:** `maize_bipolaris.csv`
 -   **Response:** Bipolaris severity (%) converted to proportion
 -   **Time scale:** DAE (days after emergence)
--   **Design columns:** `Ambiente` (environment), `Hibrido` (hybrid), `Parcela` (plot/block)
+-   **Design columns:** `Ambiente` (environment) and `Hibrido` (hybrid). The supplied CSV has no `Parcela` column; each environment × hybrid combination defines one observed trajectory.
 
 ------------------------------------------------------------------------
 
@@ -61,6 +62,8 @@ Beta regression requires $0 < y < 1$, so we apply a small boundary adjustment:
 $$
 y^* = \min\left(\max(y, \varepsilon), 1-\varepsilon\right).
 $$
+
+The manual beta-GAM uses this adjusted response (`y`); observed scalar metrics and raw-curve plots use the original proportions (`bipolaris`).
 
 ### AUDPC
 
@@ -121,7 +124,7 @@ $$
 pkgs <- c(
   "readr","dplyr","tidyr","tibble","purrr",
   "ggplot2","mgcv","pracma","pheatmap",
-  "lme4","lmerTest","emmeans","multcompView",
+  "lme4","lmerTest","emmeans","multcomp","multcompView",
   "cowplot","ggrepel","ggdendro","patchwork",
   "DHARMa","stringr","glue"
 )
@@ -177,8 +180,6 @@ k_clusters <- 4
 # Time grid for functional distances / plots
 grid_n <- 140
 
-# Reference environment used for "environment-adjusted" mean curves
-
 ```
 
 ------------------------------------------------------------------------
@@ -193,7 +194,7 @@ dat0 <- read_csv(file_path, show_col_types = FALSE)
 dat0 <- dat0 |>
   filter(DAE < dae_max, DAE > dae_min)
 
-# Expected columns: Ambiente, Hibrido, Parcela, DAE, Bipolaris
+# Expected columns: Ambiente, Hibrido, DAE, Bipolaris
 dat <- dat0 %>%
   transmute(
     Ambiente  = factor(Ambiente),
@@ -205,15 +206,22 @@ dat <- dat0 %>%
   filter(!is.na(Ambiente), !is.na(Hibrido), 
          !is.na(DAE), !is.na(bipolaris)) %>%
   mutate(
-    curve_id = interaction(Ambiente, Hibrido), drop = TRUE, sep = "|") %>%
+    curve_id = interaction(Ambiente, Hibrido, drop = TRUE, sep = "|")) %>%
   arrange(curve_id, DAE)
 
+# One observation per environment × hybrid × assessment time is required.
+# Replicated plot data need plot identifiers rather than this curve definition.
+stopifnot(!anyDuplicated(dat[c("curve_id", "DAE")]))
+
 # Retain curves with at least min_assess time points
-curve_n <- dat %>% count(curve_id, name = "n_assess")
+curve_n <- dat %>%
+  group_by(curve_id) %>%
+  summarise(n_assess = n_distinct(DAE), .groups = "drop")
 dat <- dat %>%
   left_join(curve_n, by = "curve_id") %>%
   filter(n_assess >= min_assess) %>%
-  select(-n_assess)
+  select(-n_assess) %>%
+  droplevels()
 
 # Beta regression requires 0 < y < 1
 dat <- dat %>%
@@ -244,6 +252,7 @@ dat <- dat %>%
   left_join(bipolaris_df, by = "Hibrido") %>%
   transmute(
     y          = as.numeric(y),
+    bipolaris  = as.numeric(bipolaris),
     DAE        = as.numeric(DAE),
     Ambiente   = factor(Ambiente),
     Hibrido    = factor(Hibrido),
@@ -303,7 +312,9 @@ logistic_fit_rate <- function(time, y){
     error = function(e) NULL
   )
 
-  if(is.null(f)) return(tibble(r = NA_real_, K = NA_real_, t0 = NA_real_, r_norm = NA_real_))
+  if(is.null(f) || !isTRUE(f$convInfo$isConv)) {
+    return(tibble(r = NA_real_, K = NA_real_, t0 = NA_real_, r_norm = NA_real_))
+  }
 
   co  <- coef(f)
   r   <- unname(co["r"])
@@ -324,23 +335,23 @@ logistic_fit_rate <- function(time, y){
 curve_stats <- dat %>%
   group_by(curve_id, Ambiente, Hibrido) %>%
   summarise(
-    AUDPC     = pracma::trapz(DAE, y),
-    final_sev = y[which.max(DAE)],
-    T50       = t50_interp(DAE, y),
+    AUDPC     = pracma::trapz(DAE, bipolaris),
+    final_sev = bipolaris[which.max(DAE)],
+    T50       = t50_interp(DAE, bipolaris),
     .groups   = "drop"
   )
 
 rate_df <- map_dfr(unique(curve_stats$curve_id), function(cid){
   df <- dat %>% filter(curve_id == cid)
-  logistic_fit_rate(df$DAE, df$y) %>% mutate(curve_id = as.character(cid))
+  logistic_fit_rate(df$DAE, df$bipolaris) %>% mutate(curve_id = as.character(cid))
 })
 
 curve_stats <- curve_stats %>%
   mutate(curve_id = as.character(curve_id)) %>%
-  left_join(rate_df, by = "curve_id") %>%
-  filter(is.finite(T50), is.finite(r_norm))
+  left_join(rate_df, by = "curve_id")
 
-message("Curves with all scalar metrics: ", nrow(curve_stats))
+message("Curves with AUDPC/final severity: ", nrow(curve_stats),
+        " | converged logistic fits: ", sum(is.finite(curve_stats$r_norm)))
 ```
 
 ------------------------------------------------------------------------
@@ -399,16 +410,17 @@ BIC(m_gam, m_gam2)
 
 
 
-tibble(
-  Modelo = c("k=4, m=1", "k=6, m=2"),
-  AIC = c(-4425.6, -4469.4),
-  BIC = c(-3886.9, -3892.1),
-  edf_total = c(112.6, 120.6),
-  edf_ambiente = c(17.5, 24.0),
-  k_index_min = c(1.08, 1.11)
-)
-
-library(tidyverse)
+map2_dfr(list(m_gam, m_gam2), c("k=4, m=1", "k=6, m=2"),
+         function(model, label) {
+  sm <- summary(model)
+  tibble(
+    Modelo = label,
+    AIC = AIC(model),
+    BIC = BIC(model),
+    edf_total = sum(model$edf),
+    edf_ambiente = unname(sm$s.table["s(DAE,Ambiente)", "edf"])
+  )
+})
 
 dat <- dat %>%
   mutate(
@@ -615,7 +627,9 @@ p_dend <- ggplot() +
   coord_cartesian(clip = "off") +
   theme(plot.margin = margin(t = 5.5, r = 5.5, b = 18, l = 5.5))
 
-h_cut <- hc$height[length(hc$height) - (k_clusters - 1)]
+# Place the guide between the merges below and above the requested cut.
+h_cut <- mean(hc$height[c(length(hc$height) - k_clusters + 1,
+                         length(hc$height) - k_clusters + 2)])
 p_dend <- p_dend +
   geom_hline(yintercept = h_cut, linetype = "dashed",
              linewidth = 0.5, color = "grey30")
@@ -631,6 +645,8 @@ fig_final
 ## Scalar-equivalent but trajectory-distinct curves
 
 We select two **individual curves** (by `curve_id`) that are close in scalar space (AUDPC + final severity) but have large functional distance on a common grid.
+
+Assessment windows differ among environments. The interpolation below uses constant endpoint extension (`rule = 2`) outside each observed window, whereas AUDPC is integrated only over that curve's observed window. Consequently, illustrative distances and AUDPC contrasts can reflect window differences as well as epidemic shape; comparisons over a shared observed interval would be needed to isolate shape differences.
 
 ### Select candidate pairs (scalar-nearest) and maximize functional distance
 
@@ -669,7 +685,7 @@ interp_curve <- function(dat, t_grid, id){
     filter(as.character(curve_id) == id) %>%
     arrange(DAE)
 
-  stats::approx(df$DAE, df$y, xout = t_grid, rule = 2)$y
+  stats::approx(df$DAE, df$bipolaris, xout = t_grid, rule = 2)$y
 }
 
 pairwise_table <- function(dfS){
@@ -744,6 +760,7 @@ if(nrow(candC) == 0){
   final_tol <- 0.05
   candC <- pairs0 %>% filter(final_gap <= final_tol)
 }
+if(nrow(candC) == 0) stop("No pair meets the final-severity tolerance.")
 
 best_C <- candC %>%
   arrange(desc(audpc_gap), final_gap) %>%
@@ -761,6 +778,7 @@ used_ids <- unique(c(idA1, idA2, idB1, idB2, idC1, idC2))
 pairsD <- pairs0 %>%
   filter(!(curve_id.x %in% used_ids),
          !(curve_id.y %in% used_ids))
+if(nrow(pairsD) == 0) stop("Not enough unused curves for panel D.")
 
 audpc_q <- 0.10
 cutD <- quantile(pairsD$audpc_gap, audpc_q, na.rm = TRUE)
@@ -881,15 +899,15 @@ plot_two_curves <- function(dat, dfS, id1, id2, panel_title,
     if(!is.null(func_dist)) paste0("\n d_F=", signif(func_dist, 3)) else ""
   )
 
-  y_top <- max(plot_pair$y, na.rm = TRUE) * 1.2
+  y_top <- max(plot_pair$bipolaris, na.rm = TRUE) * 1.2
 
-  ggplot(plot_pair, aes(DAE, y, color = curve)) +
+  ggplot(plot_pair, aes(DAE, bipolaris, color = curve)) +
     geom_point(alpha = 0.75, size = 1.8) +
     geom_line(linewidth = 0.9) +
     scale_color_grey(start = 0.15, end = 0.65) +
     annotate("label",
              x = min(plot_pair$DAE, na.rm = TRUE) + 2,
-             y = y_top - 0.1,
+             y = y_top * 0.95,
              label = ann,
              hjust = 0,
              size = 3.2,
@@ -914,7 +932,7 @@ plot_two_curves <- function(dat, dfS, id1, id2, panel_title,
 # Build 4 panels
 # ------------------------------------------------------------
 pD <- plot_two_curves(dat, dfS, idA1, idA2,
-                      panel_title = "Similar AUPDC & final Severity, trajectory-distinct",
+                      panel_title = "Similar AUDPC & final severity, trajectory-distinct",
                       t_grid = t_grid)
 
 pA <- plot_two_curves(dat, dfS, idB1, idB2,
@@ -944,7 +962,7 @@ fig1_panel <- (pA | pB) / (pC | pD) +
   )
 fig1_panel
 
-ggplot2::ggsave("Fig1.png", width = 10, height = 8, bg = "white")
+ggplot2::ggsave("Fig1.png", plot = fig1_panel, width = 10, height = 8, bg = "white")
 
 
 ```
@@ -967,7 +985,7 @@ This is appropriate if (a) `Parcela` is not a true replication factor, or (b) yo
 
 audpc_df <- dat %>%
   group_by(Ambiente, Hibrido) %>%
-  summarise(AUDPC = pracma::trapz(DAE, y), .groups = "drop")
+  summarise(AUDPC = pracma::trapz(DAE, bipolaris), .groups = "drop")
 
 audpc_df2 <- audpc_df %>%
   mutate(
@@ -1072,35 +1090,55 @@ ggplot(plot_df,
 
 ------------------------------------------------------------------------
 
-## Optional: run `compare_curves()` from `{r4pde}`
+## Optional: functional analysis with `{r4pde}`
 
-This section reproduces your final call, assuming `{r4pde}` is installed and your `dat` object matches the required schema.
+The former `compare_curves()` workflow is now split into two steps: [`functional_curves()`](https://emdelponte.github.io/r4pde/reference/functional_curves.html) fits adjusted trajectories, and [`functional_distances()`](https://emdelponte.github.io/r4pde/reference/functional_distances.html) computes distances, clusters, permutation tests, and optional bootstrap summaries. Install a current release of `{r4pde}` before running this optional chunk; it remains disabled during rendering.
+
+The package fits treatment-specific time smooths with an environment random intercept, rather than the environment random smooth in the manual HGAM above. It also applies its own beta boundary transformation. Thus, this is an alternative analysis and need not reproduce the manual curves or clusters exactly. Pass the original proportions (`bipolaris`) and the existing trajectory identifier (`curve_id`) to avoid adjusting the response twice.
+
+Resistance class is used only for testing, not as a model adjustment covariate. The call retains the previous environment-restricted permutation settings. In the current implementation, labels are shuffled among curves within environments; `perm_unit = "Hibrido"` maps class labels to hybrids but does not enforce the same hybrid-label permutation across environments. Interpret this as a curve-level, within-environment test, rather than a synchronized hybrid-level test. The bootstrap resamples fitted trajectories without refitting the GAM, so its intervals do not include full model-fitting uncertainty.
 
 ```{r}
-#| label: r4pde-compare-curves
+#| label: r4pde-functional-analysis
 #| eval: false
 
-#pak::pkg_install("emdelponte/r4pde")
+# install.packages("r4pde")
 library(r4pde)
 
-m1 <- compare_curves(
+fc <- functional_curves(
   data = dat,
   time = "DAE",
-  response = "y",
+  response = "bipolaris",
   treatment = "Hibrido",
   environment = "Ambiente",
+  unit = "curve_id",
+  response_scale = "proportion",
+  min_points = min_assess,
+  grid_n = grid_n
+)
+
+fc
+plot(fc)
+
+fd <- functional_distances(
+  object = fc,
+  cluster_k = k_clusters,
+  hc_method = "ward.D2",
   test_factor = "resistance",
   perm_unit = "Hibrido",
   perm_strata = "Ambiente",
   test_mode = "global",
+  n_perm = 999,
   bootstrap = TRUE,
-  boot_B = 399
+  boot_B = 399,
+  boot_seed = 1
 )
 
-m1
-plot(m1)
-plot_curves(m1)
-plot_dendrogram(m1)
+fd
+fd$test$global
+fd$clusters
+plot_curves(fd)
+plot_dendrogram(fd)
 ```
 
 ------------------------------------------------------------------------
